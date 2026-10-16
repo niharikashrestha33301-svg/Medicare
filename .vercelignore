@@ -1,0 +1,15 @@
+.git
+.vercel
+**/node_modules
+**/.env
+**/.env.*
+**/*.log
+**/test-artifacts
+**/uploads
+**/backups
+**/*.key
+**/*.pem
+**/*.dump
+**/*.sqlite*
+**/*.db
+backend/data/*-source.html

@@ -2,6 +2,7 @@
   "name": "medicare",
   "private": true,
   "scripts": {
+    "build:vercel": "node scripts/build-vercel.mjs",
     "start": "npm --prefix backend start",
     "dev": "npm --prefix backend run dev",
     "build": "npm --prefix frontend run build"
