@@ -18,7 +18,9 @@ Configure the backend environment using `backend/.env.example`, a strong JWT sec
 
 ## CLI alternative
 
-Run `npx vercel login`, then `npx vercel` from this directory. Add the backend origin in Project Settings → Environment Variables, then deploy production with `npx vercel --prod`. Do not commit `.vercel` or `.env` files.
+Run `npx vercel login`, then `npm run build:vercel` and `npx vercel deploy --prebuilt --prod --yes --project medicare` from this directory. This explicit prebuilt workflow avoids newer CLI versions incorrectly detecting the legacy Vite and Express folders as separate services. Set `MEDICARE_API_ORIGIN` in the build environment before running the local build. Dashboard environment variables do not change an already prebuilt artifact. Do not commit `.vercel` or `.env` files.
+
+The initial static deployment is https://medicare-topaz-nine.vercel.app. Its database API is intentionally unavailable until a hosted backend is configured. GitHub auto-deployment has not been connected.
 
 ## Verify after deployment
 
