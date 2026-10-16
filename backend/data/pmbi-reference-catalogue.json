@@ -1,0 +1,848 @@
+{
+  "source": "https://www.pmbi.co.in/ProductList.aspx",
+  "sourceName": "PMBI official Product & MRP List",
+  "retrievedAt": "2026-10-16T14:18:24.310Z",
+  "note": "Factual reference catalogue only. Categories are navigation groupings, not treatment advice. No stock, retail brand, image rights, prescription classification or clinical guidance verified.",
+  "products": [
+    {
+      "code": "2000",
+      "name": "Dinoprostone Gel 0.5 mg (Pre-filled syringe)",
+      "packSize": "3gm Pre-filled Syringe",
+      "referenceMrpPaise": 11344,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "2534",
+      "name": "Denosumab (r-DNA origin) 60mg/ml in Pre-filled Syringe",
+      "packSize": "1ml Pre-filled Syringe in Mono-carton",
+      "referenceMrpPaise": 487500,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "5010",
+      "name": "Syringe 2 ml with needle 24G",
+      "packSize": "1's",
+      "referenceMrpPaise": 235,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "5011",
+      "name": "Syringe 5 ml with needle 24G",
+      "packSize": "1's",
+      "referenceMrpPaise": 282,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "5012",
+      "name": "Syringe 10 ml with needle 21G",
+      "packSize": "1's",
+      "referenceMrpPaise": 422,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "5013",
+      "name": "Syringe 20 ml with needle 23G",
+      "packSize": "1's",
+      "referenceMrpPaise": 844,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "6033",
+      "name": "Insulin Syringe (40 units) with 30G needle",
+      "packSize": "1's",
+      "referenceMrpPaise": 469,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "8120",
+      "name": "Lancets, Round Sterile, 28G",
+      "packSize": "50 pcs/Box",
+      "referenceMrpPaise": 3750,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "8121",
+      "name": "Glucometer Test Strip",
+      "packSize": "25 Strips",
+      "referenceMrpPaise": 21094,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "8122",
+      "name": "GLUCOMETER DIGITAL (1 glucometer, 25 strips, 25 lancets,1 lancing device,1 battery 3V, Warranty card)",
+      "packSize": "1 Kit",
+      "referenceMrpPaise": 49219,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "8127",
+      "name": "Nebulizer Mask with Tubing",
+      "packSize": "1's pack",
+      "referenceMrpPaise": 5625,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "8128",
+      "name": "Medical Digital Thermometer",
+      "packSize": "1's mono-carton",
+      "referenceMrpPaise": 8899,
+      "category": "Medical Devices"
+    },
+    {
+      "code": "2350",
+      "name": "Tapentadol 100mg Extended Release Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 6094,
+      "category": "First Aid"
+    },
+    {
+      "code": "2351",
+      "name": "Tapentadol 50mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 3000,
+      "category": "First Aid"
+    },
+    {
+      "code": "5001",
+      "name": "Absorbent Cotton Wool IP 75 g",
+      "packSize": "1's",
+      "referenceMrpPaise": 2719,
+      "category": "First Aid"
+    },
+    {
+      "code": "5002",
+      "name": "Absorbent Cotton Wool IP 200 g",
+      "packSize": "1's",
+      "referenceMrpPaise": 6375,
+      "category": "First Aid"
+    },
+    {
+      "code": "5003",
+      "name": "Absorbent Cotton Wool IP 500 g",
+      "packSize": "1's",
+      "referenceMrpPaise": 16125,
+      "category": "First Aid"
+    },
+    {
+      "code": "5004",
+      "name": "Crepe Bandage B.P. 15 cm x 4 M",
+      "packSize": "1's",
+      "referenceMrpPaise": 5157,
+      "category": "First Aid"
+    },
+    {
+      "code": "5005",
+      "name": "Crepe Bandage B. P.10 cm x 4 M",
+      "packSize": "1's",
+      "referenceMrpPaise": 3375,
+      "category": "First Aid"
+    },
+    {
+      "code": "5006",
+      "name": "Cotton Bandage 7.5 cm x 4 M",
+      "packSize": "1's",
+      "referenceMrpPaise": 1407,
+      "category": "First Aid"
+    },
+    {
+      "code": "5007",
+      "name": "Cotton Bandage 10 cm x 4 M",
+      "packSize": "1's",
+      "referenceMrpPaise": 1875,
+      "category": "First Aid"
+    },
+    {
+      "code": "5008",
+      "name": "Cotton Bandages(Non Sterile) 15 cm x 4 M",
+      "packSize": "1's",
+      "referenceMrpPaise": 2813,
+      "category": "First Aid"
+    },
+    {
+      "code": "5009",
+      "name": "Janaushadhi Suraksha (Adhesive Bandages Washproof)",
+      "packSize": "1's",
+      "referenceMrpPaise": 94,
+      "category": "First Aid"
+    },
+    {
+      "code": "5022",
+      "name": "Plaster of Paris BP Bandages 15cm X 2.7m / Roll",
+      "packSize": "1's",
+      "referenceMrpPaise": 7969,
+      "category": "First Aid"
+    },
+    {
+      "code": "626",
+      "name": "Ketoconazole Shampoo 2% W/V",
+      "packSize": "100 ml Bottle",
+      "referenceMrpPaise": 5813,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1473",
+      "name": "Hand Sanitizer 100 ml (Each pack contains: Ethanol 70% v/v and Chlorhexidine Gluconate 0.5% w/v)",
+      "packSize": "100 ml",
+      "referenceMrpPaise": 4000,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1474",
+      "name": "Hand Sanitizer 500 ml (Each pack contains: Ethanol 70% v/v and Chlorhexidine Gluconate 0.5% w/v)",
+      "packSize": "500 ml",
+      "referenceMrpPaise": 20000,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1475",
+      "name": "Hand Sanitizer 250 ml (Each pack contains: Ethanol 70% v/v and Chlorhexidine Gluconate 0.5% w/v)",
+      "packSize": "250 ml",
+      "referenceMrpPaise": 10000,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1487",
+      "name": "Selenium Sulphide Shampoo 2.5% w/v",
+      "packSize": "120 ml",
+      "referenceMrpPaise": 17438,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1672",
+      "name": "Ketoconazole Soap 2%",
+      "packSize": "75 gm Pack",
+      "referenceMrpPaise": 4405,
+      "category": "Personal Care"
+    },
+    {
+      "code": "1995",
+      "name": "Selenium Sulphide Shampoo 1% w/w",
+      "packSize": "60ml Flip top Jar",
+      "referenceMrpPaise": 8907,
+      "category": "Personal Care"
+    },
+    {
+      "code": "2005",
+      "name": "Potassium Nitrate Toothpaste 5% w/w",
+      "packSize": "100gm",
+      "referenceMrpPaise": 4219,
+      "category": "Personal Care"
+    },
+    {
+      "code": "2365",
+      "name": "Ketoconazole Shampoo 2 % w/v (30ml Pouch)",
+      "packSize": "30ml Pouch",
+      "referenceMrpPaise": 1875,
+      "category": "Personal Care"
+    },
+    {
+      "code": "2578",
+      "name": "Ketoconazole 2% w/v and Zinc Pyrithione 1% w/v Shampoo",
+      "packSize": "100ml",
+      "referenceMrpPaise": 7500,
+      "category": "Personal Care"
+    },
+    {
+      "code": "2622",
+      "name": "Potassium Nitrate 5% w/w and Sodium Monofluoro Phosphate 0.7% w/w Toothpaste Gel (Fresh-Mint Flavour)",
+      "packSize": "100g",
+      "referenceMrpPaise": 3282,
+      "category": "Personal Care"
+    },
+    {
+      "code": "8140",
+      "name": "Janaushadhi Suvidha (Oxo- Biodegradable Sanitary Napkins Regular Size with wings)",
+      "packSize": "Pack of 4 Sanitary Napkins",
+      "referenceMrpPaise": 400,
+      "category": "Personal Care"
+    },
+    {
+      "code": "7",
+      "name": "Diclofenac Gel IP 1.16%w/w (Diclofenac Diethylamine)",
+      "packSize": "15 g",
+      "referenceMrpPaise": 1125,
+      "category": "Skin Care"
+    },
+    {
+      "code": "87",
+      "name": "Clotrimazole Cream IP 1% w/w",
+      "packSize": "15 g tubes",
+      "referenceMrpPaise": 1444,
+      "category": "Skin Care"
+    },
+    {
+      "code": "110",
+      "name": "Adapalene Gel 0.1%w/w",
+      "packSize": "15 gm tubes",
+      "referenceMrpPaise": 2719,
+      "category": "Skin Care"
+    },
+    {
+      "code": "112",
+      "name": "Beclomethasone Dipropionate 0.025%w/w, Clotrimazole 1%w/w and Gentamicin Sulphate 0.1%w/w Cream",
+      "packSize": "15 g tubes",
+      "referenceMrpPaise": 1875,
+      "category": "Skin Care"
+    },
+    {
+      "code": "113",
+      "name": "Beclomethasone 0.025%w/w and Neomycin 0.5%w/w Cream",
+      "packSize": "15g tube",
+      "referenceMrpPaise": 1032,
+      "category": "Skin Care"
+    },
+    {
+      "code": "115",
+      "name": "Calamine Lotion IP",
+      "packSize": "100 ml",
+      "referenceMrpPaise": 2625,
+      "category": "Skin Care"
+    },
+    {
+      "code": "118",
+      "name": "Clobetasol Propionate Cream IP 0.05 % w/w",
+      "packSize": "15 gm Tube",
+      "referenceMrpPaise": 1407,
+      "category": "Skin Care"
+    },
+    {
+      "code": "120",
+      "name": "Fusidic Acid Cream IP 2% w/w",
+      "packSize": "5 gm Tube",
+      "referenceMrpPaise": 2344,
+      "category": "Skin Care"
+    },
+    {
+      "code": "122",
+      "name": "Ketoconazole Lotion 2% w/v",
+      "packSize": "100 ml Bottle",
+      "referenceMrpPaise": 5157,
+      "category": "Skin Care"
+    },
+    {
+      "code": "124",
+      "name": "Povidone Iodine Ointment 5% w/w",
+      "packSize": "250 gm tubes/Jar",
+      "referenceMrpPaise": 10782,
+      "category": "Skin Care"
+    },
+    {
+      "code": "125",
+      "name": "Povidone Iodine Ointment 5% w/w",
+      "packSize": "15 gm tubes",
+      "referenceMrpPaise": 1444,
+      "category": "Skin Care"
+    },
+    {
+      "code": "131",
+      "name": "Silver Sulphadiazine 1% w/w, Chlorhexidine Gluconate 0.2% w/w, Allantoin 0.1% w/w, Aloe vera 15% w/w Cream",
+      "packSize": "20 gm",
+      "referenceMrpPaise": 2813,
+      "category": "Skin Care"
+    },
+    {
+      "code": "34",
+      "name": "Metformin Hydrochloride Prolonged-release 500mg and Glimepiride 2mg Tablets IP",
+      "packSize": "15's",
+      "referenceMrpPaise": 2475,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "135",
+      "name": "Gliclazide Tablets IP 40 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1444,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "136",
+      "name": "Gliclazide Tablets IP 80 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 2250,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "137",
+      "name": "Glimepiride Tablets IP 1mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 413,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "138",
+      "name": "Glimepiride Tablets IP 2mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 516,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "142",
+      "name": "Soluble Insulin Injection IP 40 IU per ml (R-DNA Origin)",
+      "packSize": "10 ml Vial",
+      "referenceMrpPaise": 7810,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "143",
+      "name": "Insulin Injection IP 40 IU per ml (Insulin Human Soluble 30% and Isophane 70%)",
+      "packSize": "10 ml Vial",
+      "referenceMrpPaise": 9000,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "144",
+      "name": "Metformin Hydrochloride Sustained Release Tablets IP 1000 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1238,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "145",
+      "name": "Metformin Hydrochloride Tablets IP 500mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 619,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "150",
+      "name": "Pioglitazone 15mg and Metformin 500mg Sustained Release Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 2532,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "362",
+      "name": "Biphasic Isophane Insulin Injection IP (50:50) 40 IU per ml",
+      "packSize": "10 ML VIAL",
+      "referenceMrpPaise": 8800,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "363",
+      "name": "Insulin Glargine Injection IP 100 IU per ml",
+      "packSize": "Cartridge 3 ml",
+      "referenceMrpPaise": 34000,
+      "category": "Diabetes Care"
+    },
+    {
+      "code": "220",
+      "name": "Calcium 500mg and Vitamin D3 250IU Tablets IP",
+      "packSize": "10's",
+      "referenceMrpPaise": 722,
+      "category": "Vitamins"
+    },
+    {
+      "code": "223",
+      "name": "Pyridoxine Hydrochloride 10mg, Doxylamine 10mg and Folic Acid 2.5mg Tablets",
+      "packSize": "30's",
+      "referenceMrpPaise": 3282,
+      "category": "Vitamins"
+    },
+    {
+      "code": "224",
+      "name": "Folic Acid Tablets IP 5 mg",
+      "packSize": "15's",
+      "referenceMrpPaise": 413,
+      "category": "Vitamins"
+    },
+    {
+      "code": "225",
+      "name": "Syrup of Iron and Folic Acid in a flavoured Base",
+      "packSize": "200 ml",
+      "referenceMrpPaise": 3300,
+      "category": "Vitamins"
+    },
+    {
+      "code": "227",
+      "name": "Polyvitamin Tablets NFI (Prophylactic)",
+      "packSize": "10's",
+      "referenceMrpPaise": 657,
+      "category": "Vitamins"
+    },
+    {
+      "code": "230",
+      "name": "Vitamin B-Complex fort Zinc Capsule",
+      "packSize": "10's",
+      "referenceMrpPaise": 929,
+      "category": "Vitamins"
+    },
+    {
+      "code": "231",
+      "name": "Vitamin B-Complex Tablets (B1 10mg, B2 10mg, B3 45mg, B5 50mg, B6 3mg, B12 15mcg)",
+      "packSize": "10's",
+      "referenceMrpPaise": 1500,
+      "category": "Vitamins"
+    },
+    {
+      "code": "232",
+      "name": "Vitamin B-Complex Syrup",
+      "packSize": "200 ml",
+      "referenceMrpPaise": 3938,
+      "category": "Vitamins"
+    },
+    {
+      "code": "498",
+      "name": "Ferrous Ascorbate 100mg and Folic Acid 1.5mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 2166,
+      "category": "Vitamins"
+    },
+    {
+      "code": "580",
+      "name": "Ginseng, Multivitamins and multiminerals Capsules",
+      "packSize": "10's",
+      "referenceMrpPaise": 3094,
+      "category": "Vitamins"
+    },
+    {
+      "code": "581",
+      "name": "Calcium Carbonate 500mg, Calcitriol 0.25mcg and Zinc 7.5mg Capsules",
+      "packSize": "10's",
+      "referenceMrpPaise": 1857,
+      "category": "Vitamins"
+    },
+    {
+      "code": "582",
+      "name": "Vitamins A,C,D,E,And B Complex and Minerals Syrup",
+      "packSize": "200 ML",
+      "referenceMrpPaise": 4407,
+      "category": "Vitamins"
+    },
+    {
+      "code": "1",
+      "name": "Aceclofenac 100mg and Paracetamol 325mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 938,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "2",
+      "name": "Aceclofenac Tablets IP 100 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 750,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "6",
+      "name": "Chlorzoxazone 500mg, Diclofenac 50mg and Paracetamol 325mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 2344,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "8",
+      "name": "Serratiopeptidase 10mg and Diclofenac Sodium 50mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 1444,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "9",
+      "name": "Diclofenac Sodium Prolonged Release Tablets IP 100 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1135,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "10",
+      "name": "Diclofenac Sodium Injection IP 25mg per ml",
+      "packSize": "3 ml",
+      "referenceMrpPaise": 375,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "11",
+      "name": "Diclofenac Gastro-Resistant Tablets IP 50 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 516,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "14",
+      "name": "Ibuprofen 400mg and Paracetamol 325mg Tablets IP",
+      "packSize": "10's",
+      "referenceMrpPaise": 750,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "15",
+      "name": "Ibuprofen Tablets IP 200 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 282,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "16",
+      "name": "Ibuprofen Tablets IP 400 mg",
+      "packSize": "15's",
+      "referenceMrpPaise": 825,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "19",
+      "name": "Nimesulide 100mg and Paracetamol 325mg Tablets",
+      "packSize": "10's",
+      "referenceMrpPaise": 1032,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "21",
+      "name": "Diclofenac Sodium 50mg and Paracetamol 325mg Tablets IP",
+      "packSize": "10's",
+      "referenceMrpPaise": 929,
+      "category": "Pain Relief"
+    },
+    {
+      "code": "22",
+      "name": "Paracetamol Paediatric Oral Suspension IP 125 mg per 5 ml",
+      "packSize": "60 ml",
+      "referenceMrpPaise": 1032,
+      "category": "Syrups"
+    },
+    {
+      "code": "36",
+      "name": "Amoxycillin 200mg and Potassium Clavulanate 28.5mg Oral Suspension IP per 5ml",
+      "packSize": "30 ml",
+      "referenceMrpPaise": 2532,
+      "category": "Syrups"
+    },
+    {
+      "code": "43",
+      "name": "Amoxycillin Oral Suspension IP 125mg per 5ml",
+      "packSize": "60 ml",
+      "referenceMrpPaise": 1782,
+      "category": "Syrups"
+    },
+    {
+      "code": "47",
+      "name": "Azithromycin Oral Suspension IP 100mg per 5ml",
+      "packSize": "15 ml",
+      "referenceMrpPaise": 1407,
+      "category": "Syrups"
+    },
+    {
+      "code": "53",
+      "name": "Cefixime Oral Suspension IP 50mg per 5ml",
+      "packSize": "30 ml",
+      "referenceMrpPaise": 1875,
+      "category": "Syrups"
+    },
+    {
+      "code": "88",
+      "name": "Co-trimoxazole (Sulphamethoxazole 200mg and Trimethoprim 40mg per 5ml) Oral Suspension IP",
+      "packSize": "50 ml",
+      "referenceMrpPaise": 1407,
+      "category": "Syrups"
+    },
+    {
+      "code": "177",
+      "name": "Albendazole Oral Suspension IP 200 mg per 5ml",
+      "packSize": "10 ml",
+      "referenceMrpPaise": 750,
+      "category": "Syrups"
+    },
+    {
+      "code": "181",
+      "name": "Tricholine Citrate 275mg and Cyproheptadine Hydrochloride 2mg Syrup per 5ml",
+      "packSize": "200 ml",
+      "referenceMrpPaise": 3563,
+      "category": "Syrups"
+    },
+    {
+      "code": "187",
+      "name": "Domperidone Suspension IP 5mg per 5ml",
+      "packSize": "30 ml",
+      "referenceMrpPaise": 1219,
+      "category": "Syrups"
+    },
+    {
+      "code": "198",
+      "name": "Dried Aluminium Hydroxide 250mg, Magnesium Hydroxide 250mg and Activated Dimethicone 50mg per 5ml Suspension",
+      "packSize": "170 ml",
+      "referenceMrpPaise": 3000,
+      "category": "Syrups"
+    },
+    {
+      "code": "235",
+      "name": "Budesonide Nebuliser Suspension 1mg per 2ml",
+      "packSize": "2 ml",
+      "referenceMrpPaise": 1238,
+      "category": "Syrups"
+    },
+    {
+      "code": "239",
+      "name": "Cetirizine Syrup IP 5 mg per 5 ml",
+      "packSize": "60 ml",
+      "referenceMrpPaise": 1219,
+      "category": "Syrups"
+    },
+    {
+      "code": "3",
+      "name": "Pregabalin Capsules IP 75 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 2063,
+      "category": "Capsules"
+    },
+    {
+      "code": "17",
+      "name": "Indomethacin Capsules IP 25 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1219,
+      "category": "Capsules"
+    },
+    {
+      "code": "40",
+      "name": "Amoxycillin 250mg and Cloxacillin 250mg Capsules",
+      "packSize": "10's",
+      "referenceMrpPaise": 2991,
+      "category": "Capsules"
+    },
+    {
+      "code": "44",
+      "name": "Amoxycillin Capsules IP 250mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1238,
+      "category": "Capsules"
+    },
+    {
+      "code": "45",
+      "name": "Amoxycillin Capsules IP 500mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 3282,
+      "category": "Capsules"
+    },
+    {
+      "code": "81",
+      "name": "Cephalexin Capsules IP 250mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 3094,
+      "category": "Capsules"
+    },
+    {
+      "code": "82",
+      "name": "Cephalexin Capsules IP 500mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 4688,
+      "category": "Capsules"
+    },
+    {
+      "code": "92",
+      "name": "Doxycycline Capsules IP 100mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1444,
+      "category": "Capsules"
+    },
+    {
+      "code": "206",
+      "name": "Omeprazole 20mg and Domperidone 10mg Capsules IP",
+      "packSize": "10's",
+      "referenceMrpPaise": 1032,
+      "category": "Capsules"
+    },
+    {
+      "code": "207",
+      "name": "Omeprazole Gastro-resistant Capsules IP 20 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 929,
+      "category": "Capsules"
+    },
+    {
+      "code": "214",
+      "name": "Rabeprazole 20mg (Enteric Coated) and Domperidone 30mg (Sustained Release) Capsules",
+      "packSize": "10's",
+      "referenceMrpPaise": 1688,
+      "category": "Capsules"
+    },
+    {
+      "code": "325",
+      "name": "Fluoxetine Hydrochloride Capsules IP 20mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 825,
+      "category": "Capsules"
+    },
+    {
+      "code": "5",
+      "name": "Aspirin Gastro-resistant Tablets IP 150 mg",
+      "packSize": "14's",
+      "referenceMrpPaise": 469,
+      "category": "Tablets"
+    },
+    {
+      "code": "12",
+      "name": "Etoricoxib Tablets IP 120 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 3563,
+      "category": "Tablets"
+    },
+    {
+      "code": "13",
+      "name": "Etoricoxib Tablets IP 90 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 2907,
+      "category": "Tablets"
+    },
+    {
+      "code": "18",
+      "name": "Azithromycin Tablets IP 250 mg",
+      "packSize": "6's",
+      "referenceMrpPaise": 4219,
+      "category": "Tablets"
+    },
+    {
+      "code": "20",
+      "name": "Nimesulide Tablets 100 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 619,
+      "category": "Tablets"
+    },
+    {
+      "code": "23",
+      "name": "Paracetamol Tablets IP 500 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 657,
+      "category": "Tablets"
+    },
+    {
+      "code": "25",
+      "name": "Serratiopeptidase Tablets IP 10 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1135,
+      "category": "Tablets"
+    },
+    {
+      "code": "28",
+      "name": "Tramadol Tablets 50mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 750,
+      "category": "Tablets"
+    },
+    {
+      "code": "29",
+      "name": "Aciclovir Tablets IP 400 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 4125,
+      "category": "Tablets"
+    },
+    {
+      "code": "39",
+      "name": "Amoxycillin 500mg and Potassium Clavulanate 125mg Tablets IP",
+      "packSize": "6's",
+      "referenceMrpPaise": 5260,
+      "category": "Tablets"
+    },
+    {
+      "code": "42",
+      "name": "Amoxycillin Trihydrate Dispersible Tablets IP 125 mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 1125,
+      "category": "Tablets"
+    },
+    {
+      "code": "48",
+      "name": "Azithromycin Dispersible Tablets 100mg",
+      "packSize": "10's",
+      "referenceMrpPaise": 2532,
+      "category": "Tablets"
+    }
+  ]
+}

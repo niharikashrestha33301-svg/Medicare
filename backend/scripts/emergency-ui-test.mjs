@@ -1,0 +1,50 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { JSDOM } from '../../frontend/node_modules/jsdom/lib/api.js';
+import { getAmbulanceTrackingStatus } from '../services/ambulanceTracking.js';
+
+const root = new URL('../../frontend/public/', import.meta.url);
+const dom = new JSDOM(fs.readFileSync(new URL('emergency.html', root), 'utf8'), { url: 'http://localhost:5000/emergency.html', runScripts: 'outside-only' });
+const w = dom.window, $ = id => w.document.getElementById(id);
+let locationCalls = 0, success, failure, offline = false;
+const requests = [];
+Object.defineProperty(w, 'isSecureContext', { value: true, configurable: true });
+Object.defineProperty(w.navigator, 'geolocation', { value: { getCurrentPosition: (ok, fail) => { locationCalls++; success = ok; failure = fail; } } });
+w.MedicareAPI = { request: async path => { requests.push(path); if (offline) throw new Error('offline'); return { hospitals: [{ id: 7, name: '<script>Hospital</script>', address: 'Test address', city: 'Test city', phone: '+91 0000000000', emergency: 'Contact hospital' }, { id: 8, name: 'Missing Phone', city: 'Other city', phone: 'javascript:evil()' }], tracking: getAmbulanceTrackingStatus() }; } };
+const settle = async () => { await new Promise(resolve => setTimeout(resolve, 0)); };
+const submit = id => $(id).dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
+try {
+  w.eval(fs.readFileSync(new URL('emergency.js', root), 'utf8')); await settle();
+  assert.equal(locationCalls, 0); assert.deepEqual(requests, ['/ambulance/status','/emergency']);
+  assert.equal(w.localStorage.length, 0); assert.equal(w.sessionStorage.length, 0);
+  assert.ok(w.document.querySelector('a[href="tel:112"]')); assert.ok(w.document.querySelector('a[href="tel:108"]'));
+  assert.ok(w.document.body.textContent.includes('Live ambulance tracking unavailable'));
+  assert.equal(w.document.querySelectorAll('iframe').length, 0);
+  assert.equal(w.document.querySelectorAll('#hospital-list script').length, 0);
+  assert.ok($('hospital-list').textContent.includes('<script>Hospital</script>'));
+  assert.equal(w.document.querySelectorAll('a[href^="javascript:"]').length, 0);
+  $('locate').click(); assert.equal(locationCalls, 1); failure({ code: 1 });
+  assert.ok($('location-status').textContent.includes('denied'));
+  $('area').value = 'Delhi & hospital'; submit('area-form');
+  assert.equal(new URL($('area-link').href).searchParams.get('query'), 'hospitals near Delhi & hospital');
+  assert.equal(new URL($('area-ambulance-link').href).searchParams.get('query'), 'ambulance services near Delhi & hospital');
+  $('destination').value = 'Hospital One, Delhi'; submit('route-form');
+  assert.equal(new URL($('route-link').href).searchParams.has('origin'), false);
+  $('locate').click(); failure({ code: 3 }); assert.ok($('location-status').textContent.includes('timed out'));
+  $('locate').click(); success({ coords: { latitude: 12.97, longitude: 77.59, accuracy: 25 } });
+  assert.ok(new URL($('nearby-link').href).searchParams.get('query').includes('12.970000,77.590000'));
+  assert.ok(new URL($('ambulance-link').href).searchParams.get('query').includes('12.970000,77.590000'));
+  assert.equal(requests.length, 2, 'GPS must not be sent before an explicit ambulance request');
+  assert.equal(w.localStorage.length, 0); assert.equal(w.sessionStorage.length, 0);
+  submit('route-form'); assert.equal(new URL($('route-link').href).searchParams.get('origin'), '12.970000,77.590000');
+  $('travel-mode').value = 'walking'; $('travel-mode').dispatchEvent(new w.Event('change')); assert.equal(new URL($('route-link').href).searchParams.get('travelmode'), 'walking');
+  $('clear-location').click(); assert.equal(new URL($('route-link').href).searchParams.has('origin'), false);
+  assert.equal($('clear-location').hidden, true);
+  $('locate').click();const lateSuccess=success;assert.equal($('clear-location').hidden,false);assert.ok($('clear-location').textContent.includes('Cancel'));$('clear-location').click();lateSuccess({coords:{latitude:12.97,longitude:77.59}});assert.equal(new URL($('nearby-link').href).searchParams.get('query'),'hospitals near me','Cancelled GPS results must be ignored');
+  w.document.querySelector('[data-directions="7"]').click(); assert.ok($('destination').value.includes('Test address'));
+  $('hospital-filter').value = 'not in directory'; $('hospital-filter').dispatchEvent(new w.Event('input')); assert.ok($('directory-status').textContent.includes('No hospitals match'));
+  offline = true; $('retry').click(); await settle(); assert.ok($('directory-status').textContent.includes('still work')); assert.equal($('retry').hidden, false);
+  const unavailable = getAmbulanceTrackingStatus(); assert.equal(unavailable.available, false); assert.deepEqual(unavailable.vehicles, []); assert.equal(unavailable.updatedAt, null);
+  for (const link of w.document.querySelectorAll('a[target="_blank"]')) { assert.ok(link.rel.includes('noopener')); assert.ok(link.rel.includes('noreferrer')); assert.equal(new URL(link.href).protocol, 'https:'); }
+  console.log('PASS: explicit GPS permission, denial/timeout fallbacks, manual hospital search, Google Maps routes, location clearing, no GPS transmission/storage, SOS dial links, unavailable tracking, safe directory rendering, and offline behavior.');
+} finally { w.close(); }

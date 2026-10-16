@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medicare - Doctor Practice & OPD Queue Portal</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            medBlue: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+              950: '#172554'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+  </style>
+  <script src="./frontend/public/portal-api.js"></script>
+  <script src="./frontend/public/currency.js"></script>
+  <script src="./frontend/public/image-support.js"></script>
+</head>
+<body class="antialiased min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const { formatINR } = MedicareCurrency;
+
+    const DEFAULT_HOSPITALS = [
+      { id: 'hosp-1', name: 'City Care Central Hospital' },
+      { id: 'hosp-2', name: 'St. Jude Heart & Specialty Center' },
+      { id: 'hosp-3', name: 'Greenfield Family & Child Hospital' }
+    ];
+
+    const DEFAULT_DOCTORS = [
+      {
+        id: 'doc-1',
+        name: 'Dr. Sanjeev Acharya',
+        email: 'dr.sanjeev@medicare.com',
+        specialization: 'Nephrology',
+        licenseNo: 'MED-8492',
+        qualifications: 'MBBS, MD (Nephrology), Senior Consultant',
+        experience: '14 Years Exp',
+        consultationFee: 499,
+        hospital: 'City Care Central Hospital',
+        hospitalId: 'hosp-1',
+        image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+        about: 'Senior Consultant Nephrologist specializing in renal health, hypertension management, and dialysis protocols.',
+        verified: true,
+        availableSlots: ['09:00 AM', '09:45 AM', '10:30 AM', '11:15 AM', '02:00 PM', '03:00 PM']
+      },
+      {
+        id: 'doc-2',
+        name: 'Dr. Sameer Khadka',
+        email: 'dr.sameer@medicare.com',
+        specialization: 'Dermatology',
+        licenseNo: 'MED-9201',
+        qualifications: 'MBBS, MD (Dermatology)',
+        experience: '11 Years Exp',
+        consultationFee: 499,
+        hospital: 'Greenfield Family & Child Hospital',
+        hospitalId: 'hosp-3',
+        image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
+        about: 'Consultant Dermatologist treating skin disorders, acne therapy, eczema, and allergy care.',
+        verified: true,
+        availableSlots: ['10:00 AM', '11:00 AM', '01:30 PM', '02:45 PM', '04:00 PM']
+      }
+    ];
+
+    const DEFAULT_APPOINTMENTS = [
+      {
+        id: 'APT-1082',
+        patientName: 'Aayush Sharma',
+        patientEmail: 'aayush.sharma@example.com',
+        patientPhone: '+1 (555) 234-5678',
+        patientAge: 32,
+        patientGender: 'Male',
+        doctorName: 'Dr. Sanjeev Acharya',
+        doctorEmail: 'dr.sanjeev@medicare.com',
+        specialization: 'Nephrology',
+        hospitalName: 'City Care Central Hospital',
+        date: '2026-08-24',
+        timeSlot: '09:45 AM',
+        symptoms: 'Kidney checkup & blood pressure evaluation',
+        status: 'Confirmed',
+        fee: 499,
+        createdAt: '2026-08-20T10:00:00Z'
+      }
+    ];
+
+    function getStorage(key, defaultVal) {
+      try {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : defaultVal;
+      } catch (e) {
+        return defaultVal;
+      }
+    }
+
+    function setStorage(key, val) {
+      try {
+        localStorage.setItem(key, JSON.stringify(val));
+      } catch (e) {}
+    }
+
+    function DoctorApp() {
+      // Auth State
+      const [doctors, setDoctors] = useState(() => getStorage('medicare_doctors', DEFAULT_DOCTORS));
+      const [activeDoctor, setActiveDoctor] = useState(() => {
+        const docs = getStorage('medicare_doctors', DEFAULT_DOCTORS);
+        return getStorage('medicare_active_doctor', docs[0]);
+      });
+      const [isLoggedIn, setIsLoggedIn] = useState(() => MedicareAPI.session()?.user.role === 'doctor');
+      const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
+
+      // Appointments
+      const [appointments, setAppointments] = useState([]);
+      const [hospitals, setHospitals] = useState(() => getStorage('medicare_hospitals', DEFAULT_HOSPITALS));
+
+      // Active Section in Doctor Dashboard
+      const [activeSection, setActiveSection] = useState('queue'); // 'queue' | 'slots' | 'profile'
+
+      // Profile Form State
+      const [profileForm, setProfileForm] = useState(activeDoctor);
+      const [newSlotText, setNewSlotText] = useState('');
+      const [toast, setToast] = useState(null);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      useEffect(() => { MedicareAPI.request('/hospitals').then(data => setHospitals(data.hospitals)).catch(error => showToast(error.message, 'error')); }, []);
+
+      useEffect(() => {
+        const local = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+        fetch((local ? 'http://localhost:5000' : '') + '/api/doctors')
+          .then(response => response.json()).then(data => {
+            if (!data.success) return;
+            setDoctors(data.doctors);
+            setActiveDoctor(current => data.doctors.find(doctor => doctor.email === (MedicareAPI.session()?.user.email || current.email)) || current);
+          }).catch(error => showToast('Cannot load the doctor directory. Run npm start in the project folder and refresh.', 'error'));
+      }, []);
+
+      useEffect(() => {
+        if (MedicareAPI.session()) MedicareAPI.request('/auth/me').then(data => setIsLoggedIn(data.user.role === 'doctor')).catch(() => setIsLoggedIn(false));
+      }, []);
+
+      // Sync storage
+      useEffect(() => { setStorage('medicare_doctors', doctors); }, [doctors]);
+      useEffect(() => { setStorage('medicare_active_doctor', activeDoctor); }, [activeDoctor]);
+      useEffect(() => { setStorage('medicare_doctor_logged_in', isLoggedIn); }, [isLoggedIn]);
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [isLoggedIn, authMode, activeSection, appointments, activeDoctor]);
+
+      // Filtered Appointments for current doctor
+      const myDoctorAppointments = useMemo(() => {
+        return appointments.filter(a => 
+          a.doctorEmail?.toLowerCase() === activeDoctor?.email?.toLowerCase() ||
+          a.doctorName?.toLowerCase() === activeDoctor?.name?.toLowerCase()
+        );
+      }, [appointments, activeDoctor]);
+
+      // --- DOCTOR LOGIN ---
+      const handleDoctorLogin = async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const submit = form.querySelector('button[type="submit"]');
+        submit.disabled = true;
+        try {
+          const data = await MedicareAPI.authenticate(form, 'login', 'doctor');
+          const directory = await MedicareAPI.request('/doctors');
+          const doctor = directory.doctors.find(item => item.email === data.user.email);
+          if (!doctor) throw new Error('Doctor profile not found');
+          setDoctors(directory.doctors);
+          setActiveDoctor(doctor); setProfileForm(doctor); setIsLoggedIn(true);
+          showToast('Signed in successfully', 'success');
+        } catch (error) { showToast(error.message, 'error'); }
+        finally { submit.disabled = false; }
+      };
+
+      // --- DOCTOR REGISTER ---
+      const handleDoctorRegister = async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const submit = form.querySelector('button[type="submit"]'); submit.disabled = true;
+        try {
+          const data = await MedicareAPI.authenticate(form, 'register', 'doctor');
+          const directory = await MedicareAPI.request('/doctors');
+          const doctor = directory.doctors.find(item => item.email === data.user.email);
+          setDoctors(directory.doctors); setActiveDoctor(doctor); setProfileForm(doctor); setIsLoggedIn(true);
+          showToast('Doctor account created successfully', 'success');
+        } catch (error) { showToast(error.message, 'error'); }
+        finally { submit.disabled = false; }
+      };
+
+      const handleLogout = () => {
+        setIsLoggedIn(false);
+        showToast('Logged out from Doctor Portal', 'info');
+        localStorage.removeItem('medicare_token');
+        localStorage.removeItem('mc_token');
+        localStorage.removeItem('mc_user');
+        window.location.assign('index.html');
+      };
+
+      useEffect(() => {
+        if (isLoggedIn) MedicareAPI.appointments().then(setAppointments).catch(error => showToast(error.message, 'error'));
+        else setAppointments([]);
+      }, [isLoggedIn]);
+      useEffect(() => { setProfileForm(activeDoctor); }, [activeDoctor]);
+      const reloadDoctor = async () => {
+        const data = await MedicareAPI.request('/doctors/' + activeDoctor.id);
+        setActiveDoctor(data.doctor); setDoctors(current => current.map(d => d.id === data.doctor.id ? data.doctor : d));
+      };
+      const handleStatusChange = async (aptId, newStatus) => {
+        try { await MedicareAPI.updateAppointment(aptId, newStatus); setAppointments(await MedicareAPI.appointments()); showToast('Appointment updated', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+      const handleAddSlot = async e => {
+        e.preventDefault();
+        try { await MedicareAPI.request('/doctors/' + activeDoctor.id + '/slots', { method: 'POST', body: JSON.stringify({ slotTime: newSlotText }) }); await reloadDoctor(); setNewSlotText(''); showToast('Availability saved', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+      const handleRemoveSlot = async slotTime => {
+        try { await MedicareAPI.request('/doctors/' + activeDoctor.id + '/slots', { method: 'DELETE', body: JSON.stringify({ slotTime }) }); await reloadDoctor(); showToast('Availability updated', 'info'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+      const handleUpdateProfile = async e => {
+        e.preventDefault();
+        try { await MedicareAPI.request('/doctors/' + activeDoctor.id, { method: 'PUT', body: JSON.stringify(profileForm) }); await reloadDoctor(); showToast('Profile saved', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen bg-slate-50">
+          
+          {/* Toast Alert */}
+          {toast && (
+            <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-lg shadow-xl text-white text-xs font-semibold ${
+              toast.type === 'success' ? 'bg-slate-900' : 'bg-medBlue-700'
+            }`}>
+              <i data-lucide="check" className="w-4 h-4 text-emerald-400"></i>
+              <span>{toast.message}</span>
+            </div>
+          )}
+
+          {/* HEADER */}
+          <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex flex-wrap items-center justify-between gap-4">
+              
+              {/* Logo */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-medBlue-800 flex items-center justify-center text-white font-black text-lg">
+                  Dr
+                </div>
+                <div>
+                  <span className="text-xl font-bold tracking-tight text-slate-900">
+                    MEDI<span className="text-medBlue-700">CARE</span>
+                  </span>
+                  <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-medBlue-100 text-medBlue-800 px-2 py-0.5 rounded">
+                    Doctor Practice Hub
+                  </span>
+                </div>
+              </div>
+
+              <a href="consultations.html" className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">Video Consultation</a>
+              {/* Server Switchers & Auth */}
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+                  <a
+                    href="index.html"
+                    className="px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1"
+                  >
+                    <span>Patient Portal</span>
+                    <i data-lucide="external-link" className="w-3 h-3"></i>
+                  </a>
+                  <a
+                    href="admin.html"
+                    className="px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1"
+                  >
+                    <span>Admin Panel</span>
+                    <i data-lucide="external-link" className="w-3 h-3"></i>
+                  </a>
+                </div>
+
+                {isLoggedIn && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 hidden md:inline">{activeDoctor.name}</span>
+                    <button
+                      onClick={handleLogout}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* BODY */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            {/* IF NOT LOGGED IN: SHOW DOCTOR LOGIN / REGISTER TABS */}
+            {!isLoggedIn ? (
+              <div className="max-w-lg mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-sm my-8">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-medBlue-50 text-medBlue-700 font-black text-xl flex items-center justify-center mx-auto mb-2">
+                    +
+                  </div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {authMode === 'login' ? 'Doctor Portal Sign In' : 'Doctor Registration'}
+                  </h1>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {authMode === 'login' ? 'Manage your OPD consultations, time slots, and patient records' : 'Register your medical practice credentials with Medicare'}
+                  </p>
+                </div>
+
+                {/* Switcher Tab */}
+                <div className="flex bg-slate-100 p-1 rounded-xl mb-6 border border-slate-200">
+                  <button
+                    onClick={() => setAuthMode('login')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      authMode === 'login' ? 'bg-white text-medBlue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Doctor Sign In
+                  </button>
+                  <button
+                    onClick={() => setAuthMode('register')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      authMode === 'register' ? 'bg-white text-medBlue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Register New Doctor
+                  </button>
+                </div>
+
+                {authMode === 'login' ? (
+                  <form onSubmit={handleDoctorLogin} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">Registered Doctor Email</label>
+                      <input
+                        type="email" name="email"  name="email"
+                        defaultValue={activeDoctor?.email || 'dr.sanjeev@medicare.com'}
+                        required
+                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-medBlue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">Password</label>
+                      <input
+                        type="password" name="password" placeholder="Enter your password"
+                        required
+                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-medBlue-600"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-medBlue-700 hover:bg-medBlue-800 text-white font-bold text-xs rounded-lg transition-all shadow-sm"
+                    >
+                      Sign In to Practice Hub
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleDoctorRegister} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Doctor Name</label>
+                        <input type="text" name="name" placeholder="Dr. Full Name" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Email</label>
+                        <input type="email" name="email" placeholder="doctor@medicare.com" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Specialization</label>
+                        <select name="specialization" className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                          <option>Cardiology</option>
+                          <option>Nephrology</option>
+                          <option>Dermatology</option>
+                          <option>Pediatrics</option>
+                          <option>Orthopedics</option>
+                          <option>Psychiatry</option>
+                          <option>General Medicine</option>
+                                                  <option>General Surgery</option>
+                          <option>Neurology</option>
+                          <option>Endocrinology</option>
+                          <option>Allergy &amp; Immunology</option>
+                          <option>Anesthesiology</option>
+                          <option>Gastroenterology</option>
+                          <option>Geriatrics</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">License No</label>
+                        <input type="text" name="licenseNo" placeholder="e.g. MED-7821" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Qualifications</label>
+                        <input type="text" name="qualifications" placeholder="MBBS, MD" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Experience (Years)</label>
+                        <input type="number" name="experience" defaultValue="10" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Hospital Affiliation</label>
+                        <select name="hospital" className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                          {hospitals.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">OPD Fee (₹)</label>
+                        <input type="number" name="consultationFee" defaultValue="499" required className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">About Doctor</label>
+                      <textarea name="about" rows="2" placeholder="Brief bio and clinical expertise..." className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg"></textarea>
+                    </div>
+                    <div><label className="text-xs font-semibold text-slate-700 block mb-1">Password</label><input type="password" name="password" minLength="6" required autoComplete="new-password" className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg" /></div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-medBlue-700 hover:bg-medBlue-800 text-white font-bold text-xs rounded-lg transition-all shadow-sm mt-2"
+                    >
+                      Complete Doctor Registration
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              /* LOGGED IN DOCTOR DASHBOARD */
+              <div>
+                {/* Doctor Profile Banner */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <img src={activeDoctor.image} alt={activeDoctor.name} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-sm" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-medBlue-700 bg-medBlue-50 px-2.5 py-0.5 rounded-full">
+                          {activeDoctor.specialization}
+                        </span>
+                        <span className="text-xs font-mono text-slate-400 font-bold">License: {activeDoctor.licenseNo}</span>
+                      </div>
+                      <h2 className="text-xl font-bold text-slate-900 mt-1">{activeDoctor.name}</h2>
+                      <p className="text-xs text-slate-500">{activeDoctor.qualifications} &bull; 🏥 {activeDoctor.hospital} &bull; Fee: {formatINR(activeDoctor.consultationFee)}</p>
+                    </div>
+                  </div>
+
+                  {/* Dashboard Tab Buttons */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                    <button
+                      onClick={() => setActiveSection('queue')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activeSection === 'queue' ? 'bg-white text-medBlue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      OPD Queue ({myDoctorAppointments.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('slots')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activeSection === 'slots' ? 'bg-white text-medBlue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Time Slots ({activeDoctor.availableSlots?.length || 0})
+                    </button>
+                    <button
+                      onClick={() => setActiveSection('profile')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        activeSection === 'profile' ? 'bg-white text-medBlue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+
+                {/* SECTION 1: OPD APPOINTMENTS QUEUE */}
+                {activeSection === 'queue' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-bold text-slate-900">Patient Appointments Queue</h3>
+                      <span className="text-xs text-slate-500 font-medium">Real-time bookings from patients</span>
+                    </div>
+
+                    {myDoctorAppointments.length === 0 ? (
+                      <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
+                        <p className="text-sm font-bold text-slate-700">No appointments in your queue</p>
+                        <p className="text-xs text-slate-400 mt-1">When patients book slots with you, their bookings will appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {myDoctorAppointments.map(apt => (
+                          <div key={apt.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono font-bold text-slate-400">{apt.id}</span>
+                                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                                  apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  apt.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                  apt.status === 'Completed' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                  'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {apt.status}
+                                </span>
+                              </div>
+                              <h4 className="text-base font-bold text-slate-900 mt-1">{apt.patientName} ({apt.patientAge}y, {apt.patientGender})</h4>
+                              <p className="text-xs text-slate-500">{apt.patientPhone} &bull; {apt.patientEmail}</p>
+                              <p className="text-xs text-slate-700 mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <strong>Patient Complaint:</strong> {apt.symptoms || 'General Checkup'}
+                              </p>
+                              <p className="text-xs font-bold text-medBlue-700 mt-2">
+                                📅 Scheduled: {apt.date} at {apt.timeSlot} &bull; Fee: {formatINR(apt.fee)}
+                              </p>
+                            </div>
+
+                            {/* Status Update Actions */}
+                            <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto">
+                              {apt.status === 'Pending' && (
+                                <button
+                                  onClick={() => handleStatusChange(apt.id, 'Confirmed')}
+                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                                >
+                                  Accept & Confirm
+                                </button>
+                              )}
+                              {apt.status === 'Confirmed' && (
+                                <button
+                                  onClick={() => handleStatusChange(apt.id, 'Completed')}
+                                  className="px-3.5 py-2 bg-medBlue-700 hover:bg-medBlue-800 text-white rounded-xl text-xs font-bold shadow-sm"
+                                >
+                                  Mark Completed
+                                </button>
+                              )}
+                              {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+                                <button
+                                  onClick={() => handleStatusChange(apt.id, 'Cancelled')}
+                                  className="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold border border-rose-200"
+                                >
+                                  Decline / Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SECTION 2: AVAILABLE TIME SLOTS MANAGER */}
+                {activeSection === 'slots' && (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl">
+                    <h3 className="text-base font-bold text-slate-900 mb-1">Manage Available OPD Time Slots</h3>
+                    <p className="text-xs text-slate-500 mb-4">Add or remove consultation slots that patients can select when booking.</p>
+
+                    <div className="space-y-3 mb-6">
+                      <label className="text-xs font-bold text-slate-700 block">Current Active Slots:</label>
+                      <div className="flex flex-wrap gap-2">
+                        {activeDoctor.availableSlots?.map(slot => (
+                          <div key={slot} className="flex items-center gap-1.5 bg-medBlue-50 text-medBlue-900 px-3 py-1.5 rounded-xl border border-medBlue-200 text-xs font-bold">
+                            <span>{slot}</span>
+                            <button
+                              onClick={() => handleRemoveSlot(slot)}
+                              className="text-slate-400 hover:text-rose-600 ml-1"
+                              title="Remove slot"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleAddSlot} className="pt-4 border-t border-slate-100">
+                      <label className="text-xs font-bold text-slate-700 block mb-1">Add New Time Slot</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. 04:15 PM"
+                          value={newSlotText}
+                          onChange={(e) => setNewSlotText(e.target.value)}
+                          className="flex-1 text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-medBlue-600"
+                        />
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 bg-medBlue-700 hover:bg-medBlue-800 text-white font-bold text-xs rounded-xl shadow-sm"
+                        >
+                          + Add Slot
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* SECTION 3: EDIT DOCTOR PROFILE */}
+                {activeSection === 'profile' && (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl">
+                    <h3 className="text-base font-bold text-slate-900 mb-1">Update Doctor Profile</h3>
+                    <p className="text-xs text-slate-500 mb-4">Modify your specialization, consultation fees, and hospital details.</p>
+
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1">Doctor Name</label>
+                          <input
+                            type="text"
+                            value={profileForm.name}
+                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                            required
+                            className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1">Specialization</label>
+                          <input
+                            type="text"
+                            value={profileForm.specialization}
+                            onChange={(e) => setProfileForm({ ...profileForm, specialization: e.target.value })}
+                            required
+                            className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1">Consultation Fee (₹)</label>
+                          <input
+                            type="number"
+                            value={profileForm.consultationFee}
+                            onChange={(e) => setProfileForm({ ...profileForm, consultationFee: Number(e.target.value) })}
+                            required
+                            className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1">License No</label>
+                          <input
+                            type="text"
+                            value={profileForm.licenseNo}
+                            onChange={(e) => setProfileForm({ ...profileForm, licenseNo: e.target.value })}
+                            required
+                            className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">Qualifications</label>
+                        <input
+                          type="text"
+                          value={profileForm.qualifications}
+                          onChange={(e) => setProfileForm({ ...profileForm, qualifications: e.target.value })}
+                          required
+                          className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-700 block mb-1">About Doctor</label>
+                        <textarea
+                          rows="3"
+                          value={profileForm.about}
+                          onChange={(e) => setProfileForm({ ...profileForm, about: e.target.value })}
+                          className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                        ></textarea>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 bg-medBlue-700 hover:bg-medBlue-800 text-white font-bold text-xs rounded-xl shadow-sm"
+                      >
+                        Save Profile Changes
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+          </main>
+
+          {/* FOOTER */}
+          <footer className="bg-white border-t border-slate-200 text-slate-500 text-xs py-8 mt-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-medBlue-800 text-white flex items-center justify-center font-bold text-xs">
+                  Dr
+                </div>
+                <span className="font-bold text-slate-900">MEDICARE</span>
+                <span className="text-slate-400">&bull; Doctor Practice & OPD Portal</span>
+              </div>
+
+              <div className="flex items-center gap-4 text-slate-600 font-medium">
+                <a href="index.html" className="text-medBlue-600 font-semibold hover:underline">Patient Portal &rarr;</a>
+                <a href="admin.html" className="text-medBlue-600 font-semibold hover:underline">Admin Control &rarr;</a>
+              </div>
+
+              <p className="text-slate-400">&copy; {new Date().getFullYear()} Medicare. All rights reserved.</p>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DoctorApp />);
+  </script>
+  <script src="./frontend/public/medical-assistant.js"></script>
+</body>
+</html>

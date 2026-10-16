@@ -1,0 +1,2 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Test Bookings | MediCare+</title></head><body><p>Opening your test bookings… <a id="continue" href="./frontend/public/test-bookings.html">Continue to My Test Bookings</a></p><script>const target = location.protocol === 'file:' ? 'http://localhost:5000/test-bookings.html' : new URL('./frontend/public/test-bookings.html', location.href).href; document.getElementById('continue').href = target; location.replace(target);</script></body></html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medicare - Hospital System Administration Portal</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            medBlue: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+              950: '#172554'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+  </style>
+  <script src="./frontend/public/portal-api.js"></script>
+  <script src="./frontend/public/currency.js"></script>
+  <script src="./frontend/public/image-support.js"></script>
+</head>
+<body class="antialiased min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const { formatINR } = MedicareCurrency;
+
+    const DEFAULT_HOSPITALS = [
+      {
+        id: 'hosp-1',
+        name: 'City Care Central Hospital',
+        city: 'Downtown Metro',
+        address: '450 Health Avenue, Ward 4',
+        phone: '+1 (800) 456-7890',
+        emergency: '24/7 Trauma Care',
+        departments: ['Cardiology', 'Nephrology', 'Dermatology', 'Orthopedics', 'General Medicine'],
+        beds: '350 Beds',
+        image: 'https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&auto=format&fit=crop&q=80'
+      },
+      {
+        id: 'hosp-2',
+        name: 'St. Jude Heart & Specialty Center',
+        city: 'Westside Medical District',
+        address: '720 Saint Jude Way',
+        phone: '+1 (800) 333-8899',
+        emergency: 'Level 1 Cardiac Unit',
+        departments: ['Cardiology', 'Internal Medicine', 'Radiology'],
+        beds: '220 Beds',
+        image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&auto=format&fit=crop&q=80'
+      },
+      {
+        id: 'hosp-3',
+        name: 'Greenfield Family & Child Hospital',
+        city: 'North Suburb',
+        address: '112 Greenfield Boulevard',
+        phone: '+1 (800) 777-1234',
+        emergency: 'Pediatric Emergency 24/7',
+        departments: ['Pediatrics', 'Dermatology', 'Psychiatry', 'ENT'],
+        beds: '180 Beds',
+        image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=600&auto=format&fit=crop&q=80'
+      }
+    ];
+
+    const DEFAULT_DOCTORS = [
+      {
+        id: 'doc-1',
+        name: 'Dr. Sanjeev Acharya',
+        email: 'dr.sanjeev@medicare.com',
+        specialization: 'Nephrology',
+        licenseNo: 'MED-8492',
+        qualifications: 'MBBS, MD (Nephrology), Senior Consultant',
+        experience: '14 Years Exp',
+        consultationFee: 499,
+        hospital: 'City Care Central Hospital',
+        hospitalId: 'hosp-1',
+        image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
+        about: 'Senior Consultant Nephrologist specializing in renal health, hypertension management, and dialysis protocols.',
+        verified: true,
+        availableSlots: ['09:00 AM', '09:45 AM', '10:30 AM', '11:15 AM', '02:00 PM', '03:00 PM']
+      },
+      {
+        id: 'doc-2',
+        name: 'Dr. Sameer Khadka',
+        email: 'dr.sameer@medicare.com',
+        specialization: 'Dermatology',
+        licenseNo: 'MED-9201',
+        qualifications: 'MBBS, MD (Dermatology)',
+        experience: '11 Years Exp',
+        consultationFee: 499,
+        hospital: 'Greenfield Family & Child Hospital',
+        hospitalId: 'hosp-3',
+        image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
+        about: 'Consultant Dermatologist treating skin disorders, acne therapy, eczema, and allergy care.',
+        verified: true,
+        availableSlots: ['10:00 AM', '11:00 AM', '01:30 PM', '02:45 PM', '04:00 PM']
+      },
+      {
+        id: 'doc-3',
+        name: 'Dr. Reet Poudel',
+        email: 'dr.reet@medicare.com',
+        specialization: 'Psychiatry',
+        licenseNo: 'MED-6734',
+        qualifications: 'MBBS, MD (Psychiatry), Fellowship Oxford',
+        experience: '16 Years Exp',
+        consultationFee: 499,
+        hospital: 'City Care Central Hospital',
+        hospitalId: 'hosp-1',
+        image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80',
+        about: 'Senior Consultant Psychiatrist providing clinical assessments, therapy, and adult cognitive mental health counseling.',
+        verified: true,
+        availableSlots: ['09:30 AM', '11:00 AM', '02:00 PM', '03:30 PM']
+      },
+      {
+        id: 'doc-4',
+        name: 'Dr. Samir Poudel',
+        email: 'dr.samir@medicare.com',
+        specialization: 'Cardiology',
+        licenseNo: 'MED-5512',
+        qualifications: 'MBBS, MD, DM (Cardiology), FACC',
+        experience: '15 Years Exp',
+        consultationFee: 499,
+        hospital: 'St. Jude Heart & Specialty Center',
+        hospitalId: 'hosp-2',
+        image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
+        about: 'Cardiologist specializing in cardiovascular care, ECG & echocardiogram diagnostics, and preventive cardiology.',
+        verified: true,
+        availableSlots: ['08:30 AM', '09:30 AM', '11:00 AM', '02:00 PM', '04:30 PM']
+      }
+    ];
+
+    const DEFAULT_USERS = [
+      { id: 'usr-1', name: 'Aayush Sharma', email: 'aayush.sharma@example.com', phone: '+1 (555) 234-5678', role: 'Patient', status: 'Active', bloodGroup: 'O+' },
+      { id: 'usr-2', name: 'Emma Watson', email: 'emma.watson@example.com', phone: '+1 (555) 876-1234', role: 'Patient', status: 'Active', bloodGroup: 'A+' },
+      { id: 'usr-3', name: 'David Miller', email: 'david.miller@example.com', phone: '+1 (555) 998-3344', role: 'Patient', status: 'Active', bloodGroup: 'B+' }
+    ];
+
+    const DEFAULT_APPOINTMENTS = [
+      {
+        id: 'APT-1082',
+        patientName: 'Aayush Sharma',
+        patientEmail: 'aayush.sharma@example.com',
+        patientPhone: '+1 (555) 234-5678',
+        patientAge: 32,
+        patientGender: 'Male',
+        doctorName: 'Dr. Sanjeev Acharya',
+        doctorEmail: 'dr.sanjeev@medicare.com',
+        specialization: 'Nephrology',
+        hospitalName: 'City Care Central Hospital',
+        date: '2026-08-24',
+        timeSlot: '09:45 AM',
+        symptoms: 'Kidney checkup & blood pressure evaluation',
+        status: 'Confirmed',
+        fee: 499,
+        createdAt: '2026-08-20T10:00:00Z'
+      }
+    ];
+
+    function getStorage(key, defaultVal) {
+      try {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : defaultVal;
+      } catch (e) {
+        return defaultVal;
+      }
+    }
+
+    function setStorage(key, val) {
+      try {
+        localStorage.setItem(key, JSON.stringify(val));
+      } catch (e) {}
+    }
+
+    function AdminApp() {
+      // Auth State
+      const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => MedicareAPI.session()?.user.role === 'admin');
+      const [currentTab, setCurrentTab] = useState('users'); // 'users' | 'doctors' | 'hospitals' | 'appointments'
+
+      // Master Data Stores
+      const [users, setUsers] = useState([]);
+      const [doctors, setDoctors] = useState([]);
+      const [reviewBusy, setReviewBusy] = useState(null);
+      const [reviewNotes, setReviewNotes] = useState({});
+      const [hospitals, setHospitals] = useState(() => getStorage('medicare_hospitals', DEFAULT_HOSPITALS));
+      const [appointments, setAppointments] = useState([]);
+
+      // Modals
+      const [addHospitalModal, setAddHospitalModal] = useState(false);
+      const [toast, setToast] = useState(null);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      // Sync
+      useEffect(() => { setStorage('medicare_doctors', doctors); }, [doctors]);
+      useEffect(() => { setStorage('medicare_hospitals', hospitals); }, [hospitals]);
+      useEffect(() => { setStorage('medicare_admin_logged_in', isAdminLoggedIn); }, [isAdminLoggedIn]);
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [isAdminLoggedIn, currentTab, doctors, hospitals, appointments, users, addHospitalModal]);
+
+      useEffect(() => {
+        MedicareAPI.request('/hospitals').then(data => setHospitals(data.hospitals)).catch(error => showToast(error.message, 'error'));
+        if (MedicareAPI.session()) MedicareAPI.request('/auth/me').then(data => setIsAdminLoggedIn(data.user.role === 'admin')).catch(() => setIsAdminLoggedIn(false));
+      }, []);
+
+      // --- ADMIN LOGIN ---
+      const handleAdminLogin = async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        try { await MedicareAPI.authenticate(form, 'login', 'admin'); setIsAdminLoggedIn(true); showToast('Signed in successfully', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+
+      const handleAdminLogout = () => {
+        setIsAdminLoggedIn(false);
+        showToast('Logged out from Admin Panel', 'info');
+        localStorage.removeItem('medicare_token');
+        localStorage.removeItem('mc_token');
+        localStorage.removeItem('mc_user');
+        window.location.assign('index.html');
+      };
+
+      const refreshAdmin = async () => {
+        const [userData, appointmentData, doctorData, hospitalData] = await Promise.all([MedicareAPI.request('/admin/users'), MedicareAPI.appointments(), MedicareAPI.request('/admin/doctors'), MedicareAPI.request('/hospitals')]);
+        setUsers(userData.users); setAppointments(appointmentData); setDoctors(doctorData.doctors); setHospitals(hospitalData.hospitals);
+      };
+      useEffect(() => { if (isAdminLoggedIn) refreshAdmin().catch(error => showToast(error.message, 'error')); else { setUsers([]); setAppointments([]); setDoctors([]); } }, [isAdminLoggedIn]);
+      const handleToggleUserStatus = async userId => {
+        try { await MedicareAPI.request('/admin/users/' + userId + '/status', { method: 'PUT' }); await refreshAdmin(); showToast('User status saved', 'info'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+      const handleDoctorReview = async (doctor, decision) => {
+        if(reviewBusy!==null)return;
+        setReviewBusy(doctor.id);
+        try { await MedicareAPI.request('/admin/doctors/' + doctor.id + '/review', { method: 'PUT',body:JSON.stringify({decision,reason:reviewNotes[doctor.id]||'',version:doctor.reviewVersion}) }); await refreshAdmin(); showToast('Doctor registration '+decision.toLowerCase(), 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+        finally {setReviewBusy(null);}
+      };
+      const handleAddHospital = async e => {
+        e.preventDefault(); const fields = Object.fromEntries(new FormData(e.currentTarget));
+        try { await MedicareAPI.request('/hospitals', { method: 'POST', body: JSON.stringify({ ...fields, beds: fields.beds + ' Beds', departments: fields.departments.split(',').map(s => s.trim()).filter(Boolean) }) }); await refreshAdmin(); setAddHospitalModal(false); showToast('Hospital saved', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+      const handleUpdateAptStatus = async (aptId, newStatus) => {
+        try { await MedicareAPI.updateAppointment(aptId, newStatus); await refreshAdmin(); showToast('Appointment updated', 'success'); }
+        catch (error) { showToast(error.message, 'error'); }
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen bg-slate-50">
+          
+          {/* Toast Message */}
+          {toast && (
+            <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-lg shadow-xl text-white text-xs font-semibold ${
+              toast.type === 'success' ? 'bg-slate-900' : 'bg-medBlue-700'
+            }`}>
+              <i data-lucide="check" className="w-4 h-4 text-emerald-400"></i>
+              <span>{toast.message}</span>
+            </div>
+          )}
+
+          {/* HEADER */}
+          <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2 flex flex-wrap items-center justify-between gap-4">
+              
+              {/* Brand Logo */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white font-black text-lg">
+                  A
+                </div>
+                <div>
+                  <span className="text-xl font-bold tracking-tight text-slate-900">
+                    MEDI<span className="text-medBlue-700">CARE</span>
+                  </span>
+                  <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
+                    Admin System
+                  </span>
+                </div>
+              </div>
+
+              <a href="pharmacy.html" className="px-3 py-2 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold">Pharmacy Operations</a>
+              {/* Server Switchers & Auth */}
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+                  <a
+                    href="index.html"
+                    className="px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1"
+                  >
+                    <span>Patient Portal</span>
+                    <i data-lucide="external-link" className="w-3 h-3"></i>
+                  </a>
+                  <a
+                    href="doctor.html"
+                    className="px-2.5 py-1 rounded-md font-semibold text-slate-600 hover:text-slate-900 hover:bg-white transition-all flex items-center gap-1"
+                  >
+                    <span>Doctor Portal</span>
+                    <i data-lucide="external-link" className="w-3 h-3"></i>
+                  </a>
+                </div>
+
+                {isAdminLoggedIn && (
+                  <button
+                    onClick={handleAdminLogout}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold"
+                  >
+                    Admin Logout
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* BODY */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            {/* IF NOT LOGGED IN: SHOW ADMIN LOGIN */}
+            {!isAdminLoggedIn ? (
+              <div className="max-w-md mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-sm my-12">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-900 font-black text-xl flex items-center justify-center mx-auto mb-2">
+                    A
+                  </div>
+                  <h1 className="text-2xl font-bold text-slate-900">Hospital Administration</h1>
+                  <p className="text-xs text-slate-500 mt-1">Super Admin Control & Oversight</p>
+                </div>
+
+                <form onSubmit={handleAdminLogin} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Admin Email</label>
+                    <input
+                      type="email" name="email" defaultValue="admin@medicare.com"
+                      required
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Password</label>
+                    <input
+                      type="password" name="password" defaultValue="admin123"
+                      required
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-600"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-all shadow-sm"
+                  >
+                    Sign In as Administrator
+                  </button>
+                </form>
+              </div>
+            ) : (
+              /* LOGGED IN ADMIN DASHBOARD */
+              <div>
+                
+                {/* Metrics Banner */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <span className="text-xs text-slate-400 font-bold uppercase">Registered Users</span>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{users.length}</p>
+                    <span className="text-[11px] text-medBlue-600 font-semibold">Active Patients</span>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <span className="text-xs text-slate-400 font-bold uppercase">Verified Doctors</span>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{doctors.length}</p>
+                    <span className="text-[11px] text-emerald-600 font-semibold">Licensed Physicians</span>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <span className="text-xs text-slate-400 font-bold uppercase">Partner Hospitals</span>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{hospitals.length}</p>
+                    <span className="text-[11px] text-slate-400 font-semibold">Medical Centers</span>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <span className="text-xs text-slate-400 font-bold uppercase">Total Appointments</span>
+                    <p className="text-2xl font-black text-slate-900 mt-1">{appointments.length}</p>
+                    <span className="text-[11px] text-blue-600 font-semibold">Live System Queue</span>
+                  </div>
+                </div>
+
+                {/* Admin Sub-Tabs */}
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                  <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-xs font-semibold">
+                    <button
+                      onClick={() => setCurrentTab('users')}
+                      className={`px-4 py-2 rounded-lg transition-all ${
+                        currentTab === 'users' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      1. Manage Users ({users.length})
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('doctors')}
+                      className={`px-4 py-2 rounded-lg transition-all ${
+                        currentTab === 'doctors' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      2. Manage Doctors ({doctors.length})
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('hospitals')}
+                      className={`px-4 py-2 rounded-lg transition-all ${
+                        currentTab === 'hospitals' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      3. Manage Hospitals ({hospitals.length})
+                    </button>
+                    <button
+                      onClick={() => setCurrentTab('appointments')}
+                      className={`px-4 py-2 rounded-lg transition-all ${
+                        currentTab === 'appointments' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      4. Manage Appointments ({appointments.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* TAB 1: MANAGE USERS */}
+                {currentTab === 'users' && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Manage Registered Patients</h3>
+                        <p className="text-xs text-slate-500">View and update user account statuses</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase">
+                          <tr>
+                            <th className="p-3.5">User Name</th>
+                            <th className="p-3.5">Email</th>
+                            <th className="p-3.5">Phone</th>
+                            <th className="p-3.5">Role</th>
+                            <th className="p-3.5">Status</th>
+                            <th className="p-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {users.map(u => (
+                            <tr key={u.id} className="hover:bg-slate-50">
+                              <td className="p-3.5 font-bold text-slate-900">{u.name}</td>
+                              <td className="p-3.5 text-slate-600">{u.email}</td>
+                              <td className="p-3.5 text-slate-600">{u.phone}</td>
+                              <td className="p-3.5 font-semibold text-slate-700">{u.role}</td>
+                              <td className="p-3.5">
+                                <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+                                  u.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {u.status}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right">
+                                <button
+                                  onClick={() => handleToggleUserStatus(u.id)}
+                                  className="text-xs font-bold text-medBlue-700 hover:underline"
+                                >
+                                  {u.status === 'Active' ? 'Suspend' : 'Reactivate'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: MANAGE DOCTORS */}
+                {currentTab === 'doctors' && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Manage Doctors & Credential Verifications</h3>
+                        <p className="text-xs text-slate-500">Approve medical licenses and assign hospital affiliations</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase">
+                          <tr>
+                            <th className="p-3.5">Doctor</th>
+                            <th className="p-3.5">License No</th>
+                            <th className="p-3.5">Specialization</th>
+                            <th className="p-3.5">Hospital</th>
+                            <th className="p-3.5">Consultation Fee</th>
+                            <th className="p-3.5">Verification</th>
+                            <th className="p-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {doctors.map(d => (
+                            <tr key={d.id} className="hover:bg-slate-50">
+                              <td className="p-3.5 font-bold text-slate-900 flex items-center gap-2">
+                                <img src={d.image} alt={d.name} className="w-8 h-8 rounded-lg object-cover" />
+                                <span>{d.name}</span>
+                              </td>
+                              <td className="p-3.5 font-mono text-slate-600">{d.licenseNo}</td>
+                              <td className="p-3.5 font-semibold text-slate-700">{d.specialization}</td>
+                              <td className="p-3.5 text-slate-600">{d.hospital}</td>
+                              <td className="p-3.5 font-bold text-slate-900">{formatINR(d.consultationFee)}</td>
+                              <td className="p-3.5">
+                                <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+                                  d.verified ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                  {d.verificationStatus || (d.verified ? 'Approved' : 'Pending')}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right">
+                                <div className="space-y-2 min-w-56" data-doctor-review={d.id}>
+                                  <label className="text-xs text-slate-600">Review reason (required to reject or revoke)<input aria-label={'Review reason for '+d.name} value={reviewNotes[d.id]||''} onChange={e=>setReviewNotes({...reviewNotes,[d.id]:e.target.value})} maxLength="1000" className="w-full p-2 border rounded-lg text-xs" /></label>
+                                  {d.reviewReason && <p className="text-xs text-slate-500">{d.reviewReason}</p>}
+                                  <div className="flex flex-wrap gap-3">
+                                    {!d.verified && <button disabled={reviewBusy!==null} onClick={()=>handleDoctorReview(d,'Approved')} className="text-xs font-bold text-emerald-700">Approve Doctor</button>}
+                                    {d.verificationStatus!=='Rejected' && <button disabled={reviewBusy!==null} onClick={()=>handleDoctorReview(d,'Rejected')} className="text-xs font-bold text-rose-700">Reject Registration</button>}
+                                    {d.verified && <button disabled={reviewBusy!==null} onClick={()=>handleDoctorReview(d,'Revoked')} className="text-xs font-bold text-medBlue-700">Revoke Approval</button>}
+                                    {reviewBusy===d.id && <span role="status" className="text-xs">Saving review…</span>}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: MANAGE HOSPITALS */}
+                {currentTab === 'hospitals' && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Manage Partner Hospitals</h3>
+                        <p className="text-xs text-slate-500">Configure medical centers, beds, and clinical departments</p>
+                      </div>
+                      <button
+                        onClick={() => setAddHospitalModal(true)}
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-sm"
+                      >
+                        + Add Hospital
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase">
+                          <tr>
+                            <th className="p-3.5">Hospital Name</th>
+                            <th className="p-3.5">Address</th>
+                            <th className="p-3.5">Phone</th>
+                            <th className="p-3.5">Capacity</th>
+                            <th className="p-3.5">Departments</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {hospitals.map(h => (
+                            <tr key={h.id} className="hover:bg-slate-50">
+                              <td className="p-3.5 font-bold text-slate-900">{h.name}</td>
+                              <td className="p-3.5 text-slate-600">{h.address}</td>
+                              <td className="p-3.5 text-slate-600">{h.phone}</td>
+                              <td className="p-3.5 font-semibold text-slate-700">{h.beds}</td>
+                              <td className="p-3.5">
+                                <span className="text-[11px] text-slate-500">{h.departments.join(', ')}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: MANAGE APPOINTMENTS */}
+                {currentTab === 'appointments' && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Manage System Appointments</h3>
+                        <p className="text-xs text-slate-500">Monitor all scheduled hospital OPD consultations</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase">
+                          <tr>
+                            <th className="p-3.5">Appt ID</th>
+                            <th className="p-3.5">Patient</th>
+                            <th className="p-3.5">Doctor</th>
+                            <th className="p-3.5">Hospital</th>
+                            <th className="p-3.5">Date & Slot</th>
+                            <th className="p-3.5">Status</th>
+                            <th className="p-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {appointments.map(a => (
+                            <tr key={a.id} className="hover:bg-slate-50">
+                              <td className="p-3.5 font-mono font-bold text-slate-400">{a.id}</td>
+                              <td className="p-3.5 font-bold text-slate-900">{a.patientName}</td>
+                              <td className="p-3.5 text-slate-700">{a.doctorName}</td>
+                              <td className="p-3.5 text-slate-600">{a.hospitalName}</td>
+                              <td className="p-3.5 font-semibold text-slate-800">{a.date} ({a.timeSlot})</td>
+                              <td className="p-3.5">
+                                <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+                                  a.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  a.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                  a.status === 'Completed' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                  'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {a.status}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right space-x-2">
+                                {a.status !== 'Completed' && (
+                                  <button
+                                    onClick={() => handleUpdateAptStatus(a.id, 'Completed')}
+                                    className="text-xs font-bold text-medBlue-700 hover:underline"
+                                  >
+                                    Mark Done
+                                  </button>
+                                )}
+                                {a.status !== 'Cancelled' && (
+                                  <button
+                                    onClick={() => handleUpdateAptStatus(a.id, 'Cancelled')}
+                                    className="text-xs font-bold text-rose-600 hover:underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+          </main>
+
+          {/* MODAL: ADD HOSPITAL */}
+          {addHospitalModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative">
+                <button
+                  onClick={() => setAddHospitalModal(false)}
+                  className="absolute top-5 right-5 p-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+                >
+                  <i data-lucide="x" className="w-4 h-4"></i>
+                </button>
+
+                <h3 className="text-base font-bold text-slate-900 mb-4">Add Partner Hospital</h3>
+
+                <form onSubmit={handleAddHospital} className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Hospital Name</label>
+                    <input type="text" name="name" placeholder="e.g. Apex Memorial Hospital" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">City / Region</label>
+                      <input type="text" name="city" placeholder="East Bay" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">Bed Capacity</label>
+                      <input type="number" name="beds" defaultValue="250" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Address</label>
+                    <input type="text" name="address" placeholder="100 Hospital Way" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">Phone</label>
+                      <input type="tel" name="phone" placeholder="+1 (800) 123-4567" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">Emergency Service</label>
+                      <input type="text" name="emergency" defaultValue="24/7 Emergency Care" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Departments (Comma separated)</label>
+                    <input type="text" name="departments" defaultValue="Cardiology, Dermatology, Orthopedics" required className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg" />
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddHospitalModal(false)}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white"
+                    >
+                      Save Hospital
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="bg-white border-t border-slate-200 text-slate-500 text-xs py-8 mt-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                  A
+                </div>
+                <span className="font-bold text-slate-900">MEDICARE</span>
+                <span className="text-slate-400">&bull; Super Administration Control</span>
+              </div>
+
+              <div className="flex items-center gap-4 text-slate-600 font-medium">
+                <a href="index.html" className="text-medBlue-600 font-semibold hover:underline">Patient Portal &rarr;</a>
+                <a href="doctor.html" className="text-medBlue-600 font-semibold hover:underline">Doctor Portal &rarr;</a>
+              </div>
+
+              <p className="text-slate-400">&copy; {new Date().getFullYear()} Medicare. All rights reserved.</p>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AdminApp />);
+  </script>
+  <script src="./frontend/public/medical-assistant.js"></script>
+</body>
+</html>

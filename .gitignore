@@ -1,0 +1,26 @@
+**/node_modules/
+**/.npm-cache/
+**/dist/
+**/.env
+**/*.log
+# Local credentials and generated files
+**/.env*
+!**/.env.example
+**/test-artifacts/
+**/coverage/
+**/.cache/
+**/*.pid
+**/uploads/
+**/backups/
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.dump
+**/*.sql.gz
+**/*backup*.sql
+**/*.pem
+**/*.key
+supabase/.temp/
+# Downloaded research pages; keep the normalized product/source JSON instead.
+backend/data/*-source.html
+backend/data/janaushadhi-product-page.html

@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medicare+ | Book Doctor Appointments</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            blue: {
+              50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe',
+              500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+              800: '#1e40af', 900: '#1e3a8a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: #f8fafc; }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+  <script src="./frontend/public/currency.js"></script>
+  <script src="./frontend/public/image-support.js"></script>
+</head>
+<body class="antialiased min-h-screen text-slate-900">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const { formatINR } = MedicareCurrency;
+
+    const isLocalPreview = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    const API_URL = isLocalPreview ? 'http://localhost:5000/api' : '/api';
+    const SPECIALTIES = ["All","General Physician","Cardiology","Nephrology","Dermatology","Pediatrics","Orthopedics","Psychiatry","General Surgery","Neurology","Endocrinology","Allergy & Immunology","Anesthesiology","Gastroenterology","Geriatrics","Gynecology"];
+
+    /* ─── LOCAL STORAGE HELPERS for Auth ─── */
+    const ls  = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+    const lss = (k, v) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+    /* ════════════════════════════════════════════════════
+       MAIN APP
+    ════════════════════════════════════════════════════ */
+function AppointmentSlots({doctorId,slotName='timeSlot',onReady}) {
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const [day,setDay]=React.useState(today),[slots,setSlots]=React.useState([]),[selected,setSelected]=React.useState(''),[busy,setBusy]=React.useState(true),[error,setError]=React.useState(''),[retry,setRetry]=React.useState(0);
+  React.useEffect(()=>{
+    let active=true;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15000);
+    onReady?.(false);setBusy(true);setError('');setSlots([]);setSelected('');
+    const preview=location.protocol==='file:'||(['localhost','127.0.0.1','[::1]'].includes(location.hostname)&&['5500','5501'].includes(location.port));
+    const base=preview?'http://localhost:5000/api':new URL('/api',location.href).href.replace(/\/$/,'');
+    if(!day){setBusy(false);clearTimeout(timeout);return ()=>{active=false;controller.abort();};}
+    fetch(base+'/doctors/'+encodeURIComponent(doctorId)+'/availability?date='+encodeURIComponent(day),{signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'Could not load available times.');return data;}).then(data=>{
+      if(!active)return;const available=data.slots.filter(slot=>slot.available);setSlots(data.slots);setSelected(available[0]?.time||'');onReady?.(available.length>0);
+    }).catch(error=>{if(active)setError(error.name==='AbortError'?'Availability timed out. Please retry.':error.message);}).finally(()=>{clearTimeout(timeout);if(active)setBusy(false);});
+    return ()=>{active=false;clearTimeout(timeout);controller.abort();};
+  },[doctorId,day,retry,onReady]);
+  const inputClass='w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl';
+  return <div><div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-700">Appointment Date<input className={inputClass} type="date" name="date" value={day} min={today} required onChange={event=>setDay(event.target.value)}/></label><label className="text-xs font-bold text-slate-700">Available Slot (IST)<select className={inputClass} name={slotName} value={selected} onChange={event=>setSelected(event.target.value)} disabled={busy||!!error||!slots.some(slot=>slot.available)} required><option value="">{busy?'Loading times...':'Choose an available time'}</option>{slots.map(slot=><option key={slot.time} value={slot.time} disabled={!slot.available}>{slot.time}{slot.reason?' - '+slot.reason:''}</option>)}</select></label></div><p className="text-xs text-slate-500 mt-2" role="status">{error||(!busy&&!slots.some(slot=>slot.available)?'No available times on this date. Choose another date.':'Appointment times use Asia/Kolkata (IST).')}</p>{error&&<button type="button" className="text-xs text-blue-700" onClick={()=>setRetry(value=>value+1)}>Retry availability</button>}</div>;
+}
+
+    function App() {
+      /* Navigation */
+      const [page, setPage]         = useState('home'); // home | doctors | hospitals | appointments
+      const [authOpen, setAuthOpen] = useState(false);
+      const [authTab,  setAuthTab]  = useState('login');   // login | register
+      const [regRole,  setRegRole]  = useState('patient'); // patient | doctor
+
+      /* User session */
+      const [user, setUser] = useState(() => ls('mc_user', null));
+      const [token, setToken] = useState(() => ls('mc_token', null));
+
+      /* Data */
+      const [doctors,      setDoctors]      = useState([]);
+      const [hospitals,    setHospitals]    = useState([]);
+      const [appointments, setAppointments] = useState([]);
+      const [loading,      setLoading]      = useState(true);
+
+
+      useEffect(() => {
+        let active = true;
+        const refreshVerification = () => {
+          if (document.visibilityState === 'hidden') return;
+          fetch(`${API_URL}/doctors`).then(async response => { const data = await response.json(); if (!response.ok || !data.success) throw new Error('Doctor directory unavailable.'); return data; }).then(data => { if (active) setDoctors(data.doctors); }).catch(() => {if(active) notify('Cannot refresh doctor verification. Please reload when the API is available.', 'error');});
+        };
+        window.addEventListener('focus', refreshVerification);
+        return () => { active = false; window.removeEventListener('focus', refreshVerification); };
+      }, []);
+      /* Search / filter */
+      const [q,       setQ]       = useState('');
+      const [spec,    setSpec]    = useState('All');
+      const [hospFil, setHospFil] = useState('All');
+
+      const [directoryPage, setDirectoryPage] = useState(1);
+      useEffect(() => { setDirectoryPage(1); }, [q, spec, hospFil]);
+
+      /* Modals */
+      const [bookDoc,  setBookDoc]  = useState(null);
+      const [bookingBusy, setBookingBusy] = useState(false);
+      const [availabilityReady,setAvailabilityReady]=useState(false);
+      const [bookingError, setBookingError] = useState('');
+      useEffect(() => { setBookingError(''); }, [bookDoc]);
+      const [bioDoc,   setBioDoc]   = useState(null);
+      const [cancelApt, setCancelApt] = useState(null);
+      const [toast,    setToast]    = useState(null);
+
+      /* Doctor dashboard tab */
+      const [docTab, setDocTab] = useState('queue'); // queue | slots | profile
+      const [newSlot, setNewSlot] = useState('');
+      const [testModal, setTestModal] = useState(null); // holds selected test
+      const [testBooked, setTestBooked] = useState(false);
+      const [testBusy, setTestBusy] = useState(false);
+      const [testError, setTestError] = useState('');
+      const [testReceipt, setTestReceipt] = useState(null);
+      const saveTestBooking = async e => {
+        e.preventDefault(); if(testBusy)return;
+        if(!token || user?.role !== 'patient'){setTestError('Please sign in with a patient account before booking a test.');return;}
+        const fields=Object.fromEntries(new FormData(e.currentTarget));setTestBusy(true);setTestError('');
+        try{
+          const response=await fetch(API_URL+'/lab-bookings',{method:'POST',headers:authHeaders(),body:JSON.stringify({testName:testModal.name,collectionDate:fields.td,preference:fields.preference,patientName:fields.tn,phone:fields.tp,address:fields.addr})});
+          const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'Could not save test request.');
+          setTestReceipt(data);setTestBooked(true);
+        }catch(error){setTestError(error.message||'The booking service is unavailable. Please retry.');}finally{setTestBusy(false);}
+      };
+
+      /* Sync storage */
+      useEffect(() => { lss('mc_user', user); lss('mc_token', token); }, [user, token]);
+
+      /* Lucide icons */
+      useEffect(() => { window.lucide?.createIcons(); });
+
+      const notify = (msg, type = 'ok') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3200);
+      };
+
+      const authHeaders = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` });
+
+      /* ── INITIAL FETCH ── */
+      useEffect(() => {
+        const fetchData = async () => {
+          setLoading(true);
+          try {
+            const [docsRes, hospsRes] = await Promise.all([
+              fetch(`${API_URL}/doctors`),
+              fetch(`${API_URL}/hospitals`)
+            ]);
+            const docsData = await docsRes.json();
+            const hospsData = await hospsRes.json();
+            
+            if (docsRes.ok && docsData.success) setDoctors(docsData.doctors);
+            if (hospsRes.ok && hospsData.success) setHospitals(hospsData.hospitals);
+            if (!docsRes.ok || !docsData.success || !hospsRes.ok || !hospsData.success) {
+              throw new Error('Directory unavailable');
+            }
+            
+            // If logged in, fetch appointments
+            if (token) {
+              await fetchAppointments();
+            }
+          } catch (err) {
+            console.error("Fetch error:", err);
+            notify("Cannot load doctors. Start MySQL in XAMPP and run npm start, then reload this page.", "error");
+          }
+          setLoading(false);
+        };
+        fetchData();
+      }, [token]);
+
+      const fetchAppointments = async () => {
+        try {
+          const res = await fetch(`${API_URL}/appointments/my`, { headers: authHeaders() });
+          if (res.status === 401) {
+            setToken(null); setUser(null); setAppointments([]);
+            notify('Your session expired. Please sign in again.', 'info');
+            return;
+          }
+          const data = await res.json();
+          if (data.success) setAppointments(data.appointments);
+        } catch (err) {
+          console.error("Error fetching appointments:", err);
+        }
+      };
+
+      useEffect(() => {
+        const refresh = () => { if (token) fetchAppointments(); };
+        window.addEventListener('medicare:appointment-booked', refresh);
+        return () => window.removeEventListener('medicare:appointment-booked', refresh);
+      }, [token]);
+
+      useEffect(() => {
+        const restore = () => { setUser(ls('mc_user', null)); setToken(ls('mc_token', null)); };
+        window.addEventListener('medicare:auth-changed', restore);
+        return () => window.removeEventListener('medicare:auth-changed', restore);
+      }, []);
+
+      /* Derived */
+      const myDoctor = user?.role === 'doctor' ? doctors.find(d => d.email === user.email) : null;
+
+      const filtered = useMemo(() => doctors.filter(d => {
+        const qm = !q || d.name.toLowerCase().includes(q.toLowerCase()) || d.specialization.toLowerCase().includes(q.toLowerCase());
+        const sm = spec === 'All' || d.specialization === spec;
+        const hm = hospFil === 'All' || d.hospital === hospFil;
+        return qm && sm && hm;
+      }), [doctors, q, spec, hospFil]);
+
+      const myApts = appointments;
+
+      /* ── AUTH ── */
+      const handleRegister = async e => {
+        e.preventDefault();
+        const fields = Object.fromEntries(new FormData(e.currentTarget));
+        if (fields.confirmPassword && fields.password !== fields.confirmPassword) { notify("Passwords do not match", "error"); return; }
+        
+        const payload = {
+          name: `${fields.firstName} ${fields.lastName}`.trim(),
+          email: fields.email.trim().toLowerCase(),
+          password: fields.password,
+          phone: fields.phone,
+          dob: fields.dob,
+          gender: fields.gender,
+          role: regRole
+        };
+
+        if (regRole === 'doctor') {
+          payload.specialization = fields.specialty;
+          payload.licenseNo = fields.licenseNo;
+          payload.qualifications = fields.quals;
+          payload.experience = `${fields.exp} Years`;
+          payload.consultationFee = Number(fields.fee) || 499;
+          payload.hospitalId = hospitals.find(h => h.name === fields.hospital)?.id || 1;
+          payload.about = fields.about;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (data.success) {
+            setToken(data.token);
+            setUser(data.user);
+            setAuthOpen(false);
+            notify(`Welcome, ${data.user.name}! Account created.`);
+            // Refresh doctors list if a new doctor joined
+            if (regRole === 'doctor') {
+               const docsRes = await fetch(`${API_URL}/doctors`);
+               const docsData = await docsRes.json();
+               if (docsData.success) setDoctors(docsData.doctors);
+            }
+          } else {
+            notify(data.message || 'Registration failed', 'error');
+          }
+        } catch (err) {
+          notify('Cannot connect to the API. Make sure the backend and MySQL are running.', 'error');
+        }
+      };
+
+      const handleLogin = async e => {
+        e.preventDefault();
+        const fields = Object.fromEntries(new FormData(e.currentTarget));
+        
+        try {
+          const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: String(fields.email || '').trim(), password: fields.password })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setToken(data.token);
+            setUser(data.user);
+            setAuthOpen(false);
+            notify(`Welcome back, ${data.user.name}!`);
+          } else {
+            notify(data.message || 'Invalid credentials', 'error');
+          }
+        } catch (err) {
+          notify('Cannot connect to the API. Make sure the backend and MySQL are running.', 'error');
+        }
+      };
+
+      const logout = () => { setToken(null); setUser(null); setAppointments([]); setPage('home'); notify('Logged out.', 'info'); };
+
+      /* ── BOOKING ── */
+      const confirmBooking = async data => {
+        if (bookingBusy) return;
+        if (!token) {
+           notify('Please sign in to book an appointment.', 'error');
+           setBookDoc(null); setAuthTab('login'); setAuthOpen(true);
+           return;
+        }
+
+        const payload = {
+          doctorId: data.doc.id,
+          hospitalId: data.doc.hospitalId,
+          appointmentDate: data.date,
+          timeSlot: data.slot,
+          patientName: data.patientName,
+          patientEmail: data.patientEmail,
+          patientPhone: data.patientPhone,
+          patientAge: data.patientAge,
+          patientGender: data.patientGender,
+          symptoms: data.reason
+        };
+
+        setBookingBusy(true); setBookingError('');
+        try {
+          const res = await fetch(`${API_URL}/appointments`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+          });
+          const resData = await res.json();
+          if (resData.success) {
+            setBookDoc(null); setBioDoc(null);
+            await fetchAppointments();
+            setPage('appointments');
+            notify(`Confirmed: ${resData.appointmentCode} | ${payload.appointmentDate} | ${payload.timeSlot}`);
+          } else {
+            setBookingError(resData.message || 'Booking failed. Please retry.');
+            notify(resData.message || 'Booking failed', 'error');
+          }
+        } catch (err) {
+          setBookingError('The booking API is unavailable. Start MediCare with npm start, then retry.');
+          notify('Server error during booking.', 'error');
+        } finally { setBookingBusy(false); }
+      };
+
+      const cancelAptFn = async (id, reason) => {
+        try {
+          const res = await fetch(`${API_URL}/appointments/${id}/cancel`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ reason })
+          });
+          const data = await res.json();
+          if (data.success) {
+            await fetchAppointments();
+            setCancelApt(null);
+            notify('Appointment cancelled.', 'info');
+          }
+        } catch (err) {
+          notify('Failed to cancel appointment.', 'error');
+        }
+      };
+
+      /* ── DOCTOR ACTIONS ── */
+      const updateStatus = async (aptId, status) => {
+        try {
+          const res = await fetch(`${API_URL}/appointments/${aptId}/status`, {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify({ status })
+          });
+          const data = await res.json();
+          if (data.success) {
+            await fetchAppointments();
+            notify(`Marked as ${status}`);
+          }
+        } catch (err) {
+          notify('Failed to update status.', 'error');
+        }
+      };
+
+      const addSlot = async e => {
+        e.preventDefault();
+        if (!newSlot.trim() || !myDoctor) return;
+        
+        try {
+          const res = await fetch(`${API_URL}/doctors/${myDoctor.id}/slots`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ slotTime: newSlot.trim() })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setNewSlot('');
+            // Refresh doctors list to get new slots
+            const docsRes = await fetch(`${API_URL}/doctors`);
+            const docsData = await docsRes.json();
+            if (docsData.success) setDoctors(docsData.doctors);
+            notify(`Added slot: ${newSlot}`);
+          }
+        } catch (err) {
+          notify('Failed to add slot.', 'error');
+        }
+      };
+
+      /* ─────────────────────────── RENDER ─────────────────────────── */
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+
+          {/* TOAST */}
+          {toast && (
+            <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-white text-xs font-bold fade-in ${toast.type === 'error' ? 'bg-rose-600' : toast.type === 'info' ? 'bg-blue-700' : 'bg-slate-900'}`}>
+              <i data-lucide={toast.type === 'info' ? 'info' : toast.type === 'error' ? 'alert-circle' : 'check-circle-2'} className="w-4 h-4 text-emerald-400"></i>
+              {toast.msg}
+            </div>
+          )}
+
+          {/* ══ NAVBAR ══ */}
+          <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 min-h-16 py-2 flex flex-wrap items-center justify-between gap-3">
+              {/* Logo */}
+              <button onClick={() => setPage('home')} className="flex items-center gap-2 select-none">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-600/25">+</div>
+                <span className="text-xl font-black tracking-tight">MEDI<span className="text-blue-600">CARE+</span></span>
+              </button>
+
+              {/* Center nav */}
+              <nav className="flex flex-wrap items-center gap-1 text-xs font-bold">
+                {[['home','Home'],['doctors','Find Doctors'],['tests','Book Tests'],['hospitals','Hospitals'],['appointments','Appointments']].map(([k,l]) => (
+                  <button key={k} onClick={() => setPage(k)}
+                    className={`px-4 py-2 rounded-xl transition-all ${page===k ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                    {l}
+                    {k==='appointments' && token && myApts.length > 0 && (
+                      <span className="ml-1.5 w-4 h-4 inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-[9px]">{myApts.length}</span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Right auth */}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <a href="./emergency.html" className="px-3 py-2 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold">Emergency SOS</a>
+                <a href="./consultations.html" className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold">Video Consultation</a><a href="./pharmacy.html" className="px-3 py-2 rounded-xl bg-teal-50 text-teal-700 text-xs font-bold">Online Pharmacy</a><a href="./medicines.html" className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold">Medicine Reminder</a>
+                {(!user || user.role === 'patient') && <a href="./test-bookings.html" className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold">My Test Bookings</a>}
+                {(!user || user.role === 'patient') && <a href="./health.html" className="px-3 py-2 rounded-xl bg-teal-50 text-teal-700 text-xs font-bold">♡ Health Dashboard</a>}
+                {user ? (
+                  <>
+                    <button onClick={() => setPage('appointments')} className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1.5 rounded-xl text-xs font-bold">
+                      <i data-lucide="user-check" className="w-3.5 h-3.5"></i>
+                      <span>{user.name.split(' ')[0]}</span>
+                      {user.role === 'doctor' && <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px]">DR</span>}
+                    </button>
+                    <button onClick={logout} className="text-xs text-slate-500 hover:text-slate-800 font-semibold px-2">Logout</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { setAuthTab('login'); setAuthOpen(true); }} className="text-xs font-bold text-slate-600 hover:text-blue-600 px-3 py-1.5 uppercase tracking-wide">Sign In</button>
+                    <button onClick={() => { setAuthTab('register'); setAuthOpen(true); }} className="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-lg shadow-blue-600/25 transition-all">Join</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* ══ MAIN ══ */}
+          <main className="flex-1">
+
+            {/* ── HOME ── */}
+            {page === 'home' && (
+              <div>
+                {/* Hero */}
+                <section className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                  <div className="space-y-6">
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-bold">
+                      <span className="w-2 h-2 rounded-full bg-blue-600"></span> ALWAYS HERE FOR YOU
+                    </span>
+                    <h1 className="text-5xl font-black tracking-tight leading-[1.1] text-slate-900">
+                      YOUR HEALTH IS<br /><span className="text-blue-600">OUR PRIORITY</span>
+                    </h1>
+                    <p className="text-slate-500 text-base leading-relaxed max-w-md">
+                      Medicare+ helps you find and book certified doctors, see available clinic slots, and manage your health appointments — all in one place.
+                    </p>
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <button onClick={() => setPage('doctors')}
+                        className="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition-all">
+                        BOOK APPOINTMENT
+                      </button>
+                      <button onClick={() => setPage('hospitals')}
+                        className="flex items-center gap-2 px-7 py-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 text-slate-800 font-bold text-sm shadow-sm transition-all">
+                        <i data-lucide="building-2" className="w-4 h-4 text-blue-500"></i> View Hospitals
+                      </button>
+                    </div>
+                    <div className="pt-6 border-t border-slate-100 grid grid-cols-3 gap-4 max-w-sm">
+                      {[['24/7','Availability'],['10k+','Happy Patients'],['4.9/5','Avg. Rating']].map(([v,l]) => (
+                        <div key={l}><p className="text-2xl font-black text-slate-900">{v}</p><p className="text-xs text-slate-400 font-semibold mt-0.5">{l}</p></div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-square bg-slate-100">
+                      <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80&fit=crop" alt="Doctor care" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="absolute bottom-6 left-6 right-6 sm:right-16 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 flex-shrink-0">
+                        <i data-lucide="shield-check" className="w-6 h-6"></i>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-slate-900">Verified Doctors</h4>
+                        <p className="text-xs text-slate-500">Every specialist is hand-picked</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Featured Doctors */}
+                <section className="bg-white border-y border-slate-100 py-14">
+                  <div className="max-w-7xl mx-auto px-4">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h2 className="text-2xl font-black text-slate-900">Featured Specialists</h2>
+                        <p className="text-slate-500 text-sm mt-1">Top-rated physicians ready for in-clinic consultation</p>
+                      </div>
+                      <button onClick={() => setPage('doctors')} className="text-xs font-bold text-blue-600 hover:underline">View all →</button>
+                    </div>
+                    {loading ? (
+                       <p className="text-center text-slate-400 py-10">Loading doctors from database...</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        {doctors.slice(0, 7).map(doc => (
+                          <DoctorCard key={doc.id} doc={doc} onBook={() => setBookDoc(doc)} onBio={() => setBioDoc(doc)} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* ── FIND DOCTORS ── */}
+            {page === 'doctors' && (
+              <div className="max-w-7xl mx-auto px-4 py-10">
+                <h1 className="text-3xl font-black text-slate-900 mb-1">Find Doctors</h1>
+                <p className="text-slate-500 text-sm mb-7">Search and filter verified specialists by department or hospital</p>
+
+                {/* Filters */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-7 flex flex-col md:flex-row gap-3 shadow-sm">
+                  <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                    <i data-lucide="search" className="w-4 h-4 text-slate-400"></i>
+                    <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search doctor, specialty..." className="w-full bg-transparent text-xs focus:outline-none font-medium text-slate-800" />
+                  </div>
+                  <select value={spec} onChange={e=>setSpec(e.target.value)} className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                    {SPECIALTIES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                  <select value={hospFil} onChange={e=>setHospFil(e.target.value)} className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                    <option value="All">All Hospitals</option>
+                    {hospitals.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+                  </select>
+                </div>
+
+                {loading ? (
+                   <p className="text-center text-slate-400 py-10">Loading...</p>
+                ) : filtered.length === 0 ? (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+                    <p className="font-bold text-slate-700">No doctors match your search</p>
+                    <button onClick={() => { setQ(''); setSpec('All'); setHospFil('All'); }} className="mt-3 text-xs text-blue-600 font-bold hover:underline">Reset filters</button>
+                  </div>
+                ) : (
+                  <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {filtered.slice((directoryPage - 1) * 24, directoryPage * 24).map(doc => <DoctorCard key={doc.id} doc={doc} onBook={() => setBookDoc(doc)} onBio={() => setBioDoc(doc)} />)}
+                  </div>
+                  <DirectoryPagination page={directoryPage} count={filtered.length} onChange={setDirectoryPage} />
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── HOSPITALS ── */}
+            {page === 'hospitals' && (
+              <div className="max-w-7xl mx-auto px-4 py-10">
+                <h1 className="text-3xl font-black text-slate-900 mb-1">Partner Hospitals</h1>
+                <p className="text-slate-500 text-sm mb-7">Accredited facilities with direct OPD appointment scheduling</p>
+                
+                {loading ? <p className="text-center text-slate-400 py-10">Loading hospitals...</p> : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {hospitals.map(h => (
+                      <div key={h.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all">
+                        <img src={h.image} alt={h.name} className="w-full h-44 object-cover" />
+                        <div className="p-5">
+                          <h3 className="text-base font-bold text-slate-900">{h.name}</h3>
+                          <p className="text-xs text-slate-500 mt-1">{h.address}</p>
+                          <p className="text-xs font-semibold text-slate-700 mt-1">📞 {h.phone}</p>
+                          <button onClick={() => { setHospFil(h.name); setPage('doctors'); }}
+                            className="mt-4 w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-all">
+                            View Doctors →
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── APPOINTMENTS / DOCTOR DASHBOARD ── */}
+            {page === 'appointments' && (
+              <div className="max-w-7xl mx-auto px-4 py-10">
+
+                {/* Doctor Dashboard */}
+                {user?.role === 'doctor' && myDoctor ? (
+                  <div>
+                    {/* Doctor profile banner */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <img src={myDoctor.image} className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-100" alt={myDoctor.name} />
+                        <div>
+                          <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full">{myDoctor.specialization}</span>
+                          <h2 className="text-xl font-black text-slate-900 mt-1">{myDoctor.name}</h2>
+                          <p className="text-xs text-slate-500">{myDoctor.qualifications} · 🏥 {myDoctor.hospital} · License: {myDoctor.licenseNo}</p>
+                        </div>
+                      </div>
+                      {/* Tab switches */}
+                      <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                        {[['queue','Patient Queue'],['slots','Time Slots']].map(([t,l]) => (
+                          <button key={t} onClick={() => setDocTab(t)}
+                            className={`px-3.5 py-1.5 rounded-lg transition-all ${docTab===t ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tab: Queue */}
+                    {docTab === 'queue' && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-black text-slate-900">Patient Appointment Queue ({myApts.length})</h3>
+                        {myApts.length === 0 ? (
+                          <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-400 text-sm">No appointments yet.</div>
+                        ) : myApts.map(apt => (
+                          <div key={apt.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between gap-4 shadow-sm">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-slate-400 font-bold">{apt.appointmentCode}</span>
+                                <StatusBadge s={apt.status} />
+                              </div>
+                              <h4 className="text-base font-bold text-slate-900 mt-1">{apt.patientName} ({apt.patientAge === null ? 'Age not recorded' : apt.patientAge + 'y'}, {apt.patientGender})</h4>
+                              <p className="text-xs text-slate-500">{apt.patientPhone} · {apt.patientEmail}</p>
+                              <p className="text-xs text-slate-700 bg-slate-50 border border-slate-100 p-2 rounded-xl mt-2"><strong>Reason:</strong> {apt.symptoms}</p>
+                              <p className="text-xs font-bold text-blue-700 mt-2">📅 {new Date(apt.date).toLocaleDateString()} at {apt.timeSlot} · Fee: {formatINR(apt.fee)}</p>
+                            </div>
+                            <div className="flex flex-row md:flex-col gap-2">
+                              {apt.status === 'Pending' && <button onClick={() => updateStatus(apt.id, 'Confirmed')} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold">Accept</button>}
+                              {apt.status === 'Confirmed' && <button onClick={() => updateStatus(apt.id, 'Completed')} className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold">Complete</button>}
+                              {!['Cancelled','Completed'].includes(apt.status) && (
+                                <button onClick={() => updateStatus(apt.id, 'Cancelled')} className="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold">Decline</button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Tab: Slots */}
+                    {docTab === 'slots' && (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-lg">
+                        <h3 className="text-base font-black text-slate-900 mb-1">Available OPD Slots</h3>
+                        <p className="text-xs text-slate-500 mb-5">Patients will see these slots when booking</p>
+                        <div className="flex flex-wrap gap-2 mb-5">
+                          {(myDoctor.availableSlots || []).map(s => (
+                            <div key={s} className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-900 px-3 py-1.5 rounded-xl text-xs font-bold">
+                              {s}
+                            </div>
+                          ))}
+                        </div>
+                        <form onSubmit={addSlot} className="flex gap-2 pt-4 border-t border-slate-100">
+                          <input value={newSlot} onChange={e => setNewSlot(e.target.value)} placeholder="e.g. 04:00 PM"
+                            className="flex-1 text-xs px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600" />
+                          <button type="submit" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm">+ Add</button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Patient Appointments */
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
+                      <div>
+                        <h1 className="text-3xl font-black text-slate-900">My Appointments</h1>
+                        <p className="text-slate-500 text-sm mt-1">
+                          {user ? `Showing appointments for ${user.name}` : 'Sign in to filter your personal appointments'}
+                        </p>
+                      </div>
+                      <button onClick={() => setPage('doctors')} className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-lg shadow-blue-600/25">
+                        + Book New Appointment
+                      </button>
+                    </div>
+
+                    {!user ? (
+                       <div className="bg-white border border-slate-200 rounded-3xl p-14 text-center shadow-sm">
+                        <p className="font-bold text-slate-700">You are not signed in.</p>
+                        <button onClick={() => { setAuthTab('login'); setAuthOpen(true); }} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Sign In</button>
+                      </div>
+                    ) : myApts.length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-14 text-center shadow-sm">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <i data-lucide="calendar-x" className="w-8 h-8 text-slate-400"></i>
+                        </div>
+                        <p className="font-bold text-slate-700">No appointments found</p>
+                        <p className="text-xs text-slate-500 mt-1">Browse doctors and book your first visit.</p>
+                        <button onClick={() => setPage('doctors')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold">Browse Doctors</button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {myApts.map(apt => (
+                          <div key={apt.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row justify-between gap-4 shadow-sm">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-slate-400 font-bold">{apt.appointmentCode}</span>
+                                <StatusBadge s={apt.status} />
+                              </div>
+                              <h3 className="text-base font-bold text-slate-900 mt-1">{apt.doctorName} · {apt.specialization}</h3>
+                              <p className="text-xs text-slate-500">🏥 {apt.hospitalName}</p>
+                              <p className="text-xs text-slate-700 bg-slate-50 border border-slate-100 p-2 rounded-xl mt-2"><strong>Reason:</strong> {apt.symptoms || 'General checkup'}</p>
+                            </div>
+                            <div className="flex flex-row md:flex-col items-end justify-between w-full md:w-auto gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
+                              <div className="text-right text-xs">
+                                <p className="font-black text-slate-900">📅 {new Date(apt.date).toLocaleDateString()}</p>
+                                <p className="text-blue-600 font-semibold">⏰ {apt.timeSlot} · {formatINR(apt.fee)}</p>
+                              </div>
+                              {!['Cancelled','Completed'].includes(apt.status) && (
+                                <button onClick={() => setCancelApt(apt)} className="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold">Cancel</button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          {/* ── BOOK TESTS ── */}
+            {page === 'tests' && (
+              <div className="max-w-7xl mx-auto px-4 py-10">
+                <h1 className="text-3xl font-black text-slate-900 mb-1">Book Lab Tests</h1><a href="./test-bookings.html" className="inline-block my-3 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-bold">My Test Bookings</a>
+                <p className="text-slate-500 text-sm mb-7">Choose a test and save your collection request. Lab acceptance is not yet confirmed.</p>
+
+                {/* Categories */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {[
+                    { name:'Complete Blood Count (CBC)',    price: 299,  time: '24 hrs',  desc: 'Checks RBC, WBC, platelets. Essential for detecting infections, anemia, and blood disorders.',    icon:'droplets',    color:'blue'  },
+                    { name:'Lipid Profile Panel',           price: 499,  time: '24 hrs',  desc: 'Measures cholesterol and triglycerides. Important for cardiovascular health assessment.',          icon:'heart',       color:'rose'  },
+                    { name:'Blood Sugar (Fasting & PP)',    price: 199,  time: '6 hrs',   desc: 'Diagnoses and monitors diabetes and blood sugar levels. Requires 8-hour overnight fast.',          icon:'activity',    color:'amber' },
+                    { name:'Thyroid Panel (T3, T4, TSH)',  price: 799,  time: '24 hrs',  desc: 'Evaluates thyroid gland function. Detects hypothyroidism, hyperthyroidism, and thyroid disorders.',icon:'thermometer',  color:'purple'},
+                    { name:'Liver Function Test (LFT)',    price: 599,  time: '24 hrs',  desc: 'Assesses liver enzymes and function. Essential for patients on medication or with liver conditions.',icon:'flask',       color:'green' },
+                    { name:'Kidney Function Test (KFT)',   price: 599,  time: '24 hrs',  desc: 'Tests creatinine, urea, and electrolyte levels to assess kidney health and disease risk.',         icon:'shield',      color:'teal'  },
+                    { name:'COVID-19 RT-PCR Test',         price: 499,  time: '12 hrs',  desc: 'Gold-standard test for active COVID-19 infection detection. Report available within 12 hours.',    icon:'virus',       color:'red'   },
+                    { name:'Vitamin D & B12 Panel',        price: 999,  time: '24 hrs',  desc: 'Checks critical vitamin deficiencies linked to fatigue, bone pain, and neurological symptoms.',    icon:'sun',         color:'yellow'},
+                    { name:'Full Body Health Checkup',     price: 1999, time: '48 hrs',  desc: 'Comprehensive 60+ parameter test covering CBC, liver, kidney, thyroid, blood sugar, and vitamins.',icon:'stethoscope', color:'indigo'},
+                  ].map(test => {
+                    const colorMap = {
+                      blue:   'bg-blue-50 text-blue-700 border-blue-200',
+                      rose:   'bg-rose-50 text-rose-700 border-rose-200',
+                      amber:  'bg-amber-50 text-amber-700 border-amber-200',
+                      purple: 'bg-purple-50 text-purple-700 border-purple-200',
+                      green:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+                      teal:   'bg-teal-50 text-teal-700 border-teal-200',
+                      red:    'bg-red-50 text-red-700 border-red-200',
+                      yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                      indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                    };
+                    const iconBg = {
+                      blue:'bg-blue-600',rose:'bg-rose-500',amber:'bg-amber-500',purple:'bg-purple-600',
+                      green:'bg-emerald-600',teal:'bg-teal-600',red:'bg-red-600',yellow:'bg-yellow-500',indigo:'bg-indigo-600'
+                    };
+                    return (
+                      <div key={test.name} className="bg-white border border-slate-200 rounded-3xl p-5 hover:shadow-xl hover:border-blue-300 transition-all flex flex-col justify-between shadow-sm">
+                        <div>
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-4 ${iconBg[test.color]}`}>
+                            <i data-lucide={test.icon} className="w-5 h-5 text-white"></i>
+                          </div>
+                          <h3 className="text-sm font-bold text-slate-900 mb-1">{test.name}</h3>
+                          <p className="text-xs text-slate-500 leading-relaxed mb-3">{test.desc}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${colorMap[test.color]}`}>Report in {test.time}</span>
+                            <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1"><i data-lucide="home" className="w-3 h-3"></i>Home Collection</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                          <p className="text-base font-black text-slate-900">{formatINR(test.price)}</p>
+                          <button onClick={() => {setTestModal(test);setTestBooked(false);setTestReceipt(null);setTestError('');}} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20">Book Test</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* ══ MODALS ══ */}
+
+          {/* Test Booking Modal */}
+          {testModal && (
+            <Modal onClose={() => { setTestModal(null); setTestBooked(false); }}>
+              {testBooked ? (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="check-circle-2" className="w-8 h-8 text-emerald-600"></i>
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900">Test request received</h3>
+                  <p className="text-xs text-slate-500 mt-2 mb-1">Your request is saved. Lab acceptance and collection time are not yet confirmed.</p>
+                  <p className="text-xs my-3">Reference: {testReceipt?.bookingCode} | Status: Requested</p><a href="./test-bookings.html" className="inline-block px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-xs">View My Test Bookings</a><p className="text-xs font-bold text-blue-600">{testModal.name} · {formatINR(testModal.price)}</p>
+                  <button onClick={() => { setTestModal(null); setTestBooked(false); }} className="mt-5 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold">Done</button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-4 mb-5 pb-4 border-b border-slate-100">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0">
+                      <i data-lucide={testModal.icon} className="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">{testModal.name}</h3>
+                      <p className="text-xs text-slate-500">{testModal.desc}</p>
+                      <p className="text-xs font-bold text-blue-600 mt-1">{formatINR(testModal.price)} · Report in {testModal.time}</p>
+                    </div>
+                  </div>
+                  <form onSubmit={saveTestBooking} className="space-y-3">{testError && <p role="alert" className="text-sm text-red-700">{testError}</p>}{!token && <button type="button" onClick={() => {setTestModal(null);setAuthTab('login');setAuthOpen(true);}} className="text-blue-700 text-sm font-bold">Sign in to book a test</button>}
+                    <div className="grid grid-cols-2 gap-3">
+                      <AuthField label="Full Name" name="tn" defaultValue={user?.name||''} placeholder="Your name" />
+                      <AuthField label="Phone" name="tp" type="tel" icon="phone" defaultValue={user?.phone||''} placeholder="Mobile number" />
+                    </div>
+                    <p className="text-xs text-slate-600">Account email: {user?.email || 'Sign in to continue'}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <AuthField label="Sample Collection Date" name="td" type="date" defaultValue={new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kathmandu',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())} />
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Collection Preference</label>
+                        <select name="preference" className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                          <option>Home Collection</option>
+                          <option>Visit Lab</option>
+                        </select>
+                      </div>
+                    </div>
+                    <AuthField label="Full Address (for home collection)" name="addr" placeholder="House no, street, city" />
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400">Total Amount</span>
+                        <p className="text-lg font-black text-slate-900">{formatINR(testModal.price)}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setTestModal(null)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+                        <button type="submit" disabled={testBusy} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25">{testBusy ? 'Saving request?' : 'Confirm Booking'}</button>
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
+            </Modal>
+          )}
+
+          {/* Register / Login */}
+          {authOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+              <div className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col lg:flex-row my-6 relative">
+                <button onClick={() => setAuthOpen(false)}
+                  className="absolute top-5 right-5 z-10 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center">
+                  <i data-lucide="x" className="w-4 h-4"></i>
+                </button>
+
+                {/* Left blue column */}
+                <div className="lg:w-5/12 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white p-8 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-8">
+                      <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black text-sm">+</div>
+                      <span className="text-lg font-black">MediCare+</span>
+                    </div>
+                    <h2 className="text-3xl font-black leading-tight mb-4">
+                      {authTab === 'register' ? 'Join our healthcare community today.' : 'Welcome back to Medicare+'}
+                    </h2>
+                    <p className="text-blue-100 text-sm leading-relaxed mb-8">
+                      Get access to top doctors, secure health records, and easy appointment booking.
+                    </p>
+                    {[['user-check','Direct access to Specialists'],['shield-check','Secure Health Records'],['calendar','Easy Online Booking']].map(([icon,txt]) => (
+                      <div key={txt} className="flex items-center gap-3 mb-4">
+                        <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                          <i data-lucide={icon} className="w-4 h-4 text-white"></i>
+                        </div>
+                        <span className="text-xs font-bold">{txt}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-blue-200">&copy; {new Date().getFullYear()} Medicare+ Healthcare</p>
+                </div>
+
+                {/* Right form column */}
+                <div className="lg:w-7/12 p-8 max-h-[90vh] overflow-y-auto scroll-hide">
+                  <h3 className="text-2xl font-extrabold text-slate-900">{authTab === 'register' ? 'Create Account' : 'Sign In'}</h3>
+                  <p className="text-xs text-slate-500 mb-6 mt-1">{authTab === 'register' ? 'Fill in the details below' : 'Enter your credentials to continue'}</p>
+
+                  {/* Tab switch */}
+                  {authTab === 'register' && (
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-5 border border-slate-200">
+                      {[['patient','As Patient'],['doctor','As Doctor']].map(([r,l]) => (
+                        <button key={r} type="button" onClick={() => setRegRole(r)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${regRole===r ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {authTab === 'register' ? (
+                    <form onSubmit={handleRegister} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <AuthField label="First Name" name="firstName" icon="user" placeholder="First name" />
+                        <AuthField label="Last Name" name="lastName" placeholder="Last name" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <AuthField label="Email Address" name="email" type="email" icon="mail" placeholder="email@example.com" />
+                        <AuthField label="Phone Number" name="phone" type="tel" icon="phone" placeholder="Mobile number" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <AuthField label="Date of Birth" name="dob" type="date" defaultValue="1995-01-01" />
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Gender</label>
+                          <select name="gender" className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                            <option>Male</option><option>Female</option><option>Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Doctor extra fields */}
+                      {regRole === 'doctor' && (
+                        <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-blue-700 block mb-1">Practice Hospital / Clinic</label>
+                            <select name="hospital" className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl">
+                              {hospitals.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+                            </select>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">Select the facility where you primarily practice.</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[11px] font-bold text-blue-700 block mb-1">Specialty</label>
+                              <select name="specialty" className="w-full text-xs p-2.5 bg-white border border-slate-200 rounded-xl">
+                                {SPECIALTIES.slice(1).map(s => <option key={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            <AuthField label="License Number" name="licenseNo" placeholder="Registration No." blue />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <AuthField label="Qualifications" name="quals" placeholder="MBBS, MD" blue />
+                            <AuthField label="Experience (Years)" name="exp" type="number" defaultValue="8" blue />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <AuthField label="Consultation Fee (₹)" name="fee" type="number" defaultValue="499" blue />
+                            <AuthField label="About Doctor" name="about" placeholder="Brief clinical bio..." blue />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <AuthField label="Password" name="password" type="password" icon="lock" defaultValue="password123" />
+                        <AuthField label="Confirm Password" name="confirmPassword" type="password" icon="lock" defaultValue="password123" />
+                      </div>
+
+                      <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 mt-2">
+                        Create Account <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <AuthField label="Email Address" name="email" type="email" icon="mail" defaultValue="aayush.sharma@example.com" />
+                      <AuthField label="Password" name="password" type="password" icon="lock" defaultValue="patient123" />
+                      <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 mt-2">
+                        Sign In <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
+                    {authTab === 'register'
+                      ? <p>Already have an account? <button onClick={() => setAuthTab('login')} className="text-blue-600 font-bold hover:underline">Sign In</button></p>
+                      : <p>Don't have an account? <button onClick={() => setAuthTab('register')} className="text-blue-600 font-bold hover:underline">Register Now</button></p>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Booking Modal */}
+          {bookDoc && (
+            <Modal onClose={() => setBookDoc(null)}>
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
+                <img src={bookDoc.image} className="w-14 h-14 rounded-2xl object-cover" alt={bookDoc.name} />
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Book Appointment</h3>
+                  <p className="text-xs text-blue-600 font-bold">{bookDoc.name} · {bookDoc.specialization}</p>
+                  <p className="text-xs text-slate-400">🏥 {bookDoc.hospital}</p>
+                </div>
+              </div>
+              <form onSubmit={e => {
+                e.preventDefault();
+                const f = Object.fromEntries(new FormData(e.currentTarget));
+                confirmBooking({ doc: bookDoc, date: f.date, slot: f.slot, patientName: f.patientName, patientEmail: f.patientEmail, patientPhone: f.patientPhone, patientAge: f.patientAge === '' ? null : Number(f.patientAge), patientGender: f.patientGender, reason: f.reason });
+              }} className="space-y-4">
+                <AppointmentSlots doctorId={bookDoc.id} slotName="slot" onReady={setAvailabilityReady} />
+                <div className="grid grid-cols-2 gap-3">
+                  <AuthField label="Patient Name" name="patientName" defaultValue={user?.name||''} />
+                  <AuthField label="Phone" name="patientPhone" type="tel" icon="phone" defaultValue={user?.phone||''} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <AuthField label="Email" name="patientEmail" type="email" icon="mail" defaultValue={user?.email||''} />
+                  <AuthField label="Age" name="patientAge" type="number" defaultValue={user?.age ?? ''} />
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">Gender</label>
+                    <select name="patientGender" defaultValue={user?.gender || 'Other'} className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <option>Male</option><option>Female</option><option>Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Medical Reason / Symptoms</label>
+                  <textarea name="reason" rows="2" placeholder="Briefly describe your condition..." className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"></textarea>
+                </div>
+                {bookingError && <p role="alert" className="text-sm text-rose-700">{bookingError}</p>}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div><span className="text-[10px] font-bold uppercase text-slate-400">OPD Fee</span><p className="text-lg font-black text-slate-900">{formatINR(bookDoc.consultationFee)}</p></div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setBookDoc(null)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+                    <button type="submit" disabled={bookingBusy || !availabilityReady || !bookDoc.verified || !bookDoc.availableSlots?.length} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25">{bookingBusy ? 'Booking…' : 'Confirm Booking'}</button>
+                  </div>
+                </div>
+              </form>
+            </Modal>
+          )}
+
+          {/* Doctor Bio Modal */}
+          {bioDoc && (
+            <Modal onClose={() => setBioDoc(null)} maxW="max-w-md">
+              <div className="flex items-start gap-4 mb-4">
+                <img src={bioDoc.image} className="w-20 h-20 rounded-2xl object-cover border" alt={bioDoc.name} />
+                <div>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">{bioDoc.specialization}</span>
+                  <h3 className="text-lg font-bold text-slate-900 mt-1">{bioDoc.name}</h3>
+                  <p className="text-xs text-slate-500">{bioDoc.qualifications}</p>
+                  <p className="text-xs font-mono text-slate-400">License: {bioDoc.licenseNo}</p>
+                </div>
+              </div>
+              <div className="bg-slate-50 rounded-2xl p-4 text-xs text-slate-600 space-y-1">
+                <p>{bioDoc.about || 'Specialist doctor.'}</p>
+                <p className="pt-1"><strong>Hospital:</strong> {bioDoc.hospital}</p>
+                <p><strong>Experience:</strong> {bioDoc.experience}</p>
+                <p><strong>Fee:</strong> {formatINR(bioDoc.consultationFee)}</p>
+              </div>
+              <div className="flex justify-end gap-2 mt-5">
+                <button onClick={() => setBioDoc(null)} className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">Close</button>
+                <button disabled={!bioDoc.verified} onClick={() => { const d = bioDoc; setBioDoc(null); setBookDoc(d); }} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25 disabled:opacity-60">{bioDoc.verified ? "Book Slot" : "Booking unavailable"}</button>
+              </div>
+            </Modal>
+          )}
+
+          {/* Cancel Appointment Modal */}
+          {cancelApt && (
+            <Modal onClose={() => setCancelApt(null)} maxW="max-w-sm">
+              <h3 className="text-base font-bold text-slate-900">Cancel Appointment?</h3>
+              <p className="text-xs text-slate-500 mt-1">Cancel <strong>{cancelApt.appointmentCode}</strong> with {cancelApt.doctorName}?</p>
+              <div className="mt-4">
+                <label className="text-xs font-bold text-slate-700 block mb-1">Reason</label>
+                <select id="cancelReason" className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <option>Change of schedule</option>
+                  <option>Feeling better</option>
+                  <option>Consulting another doctor</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 mt-5">
+                <button onClick={() => setCancelApt(null)} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">Keep</button>
+                <button onClick={() => cancelAptFn(cancelApt.id, document.getElementById('cancelReason').value)}
+                  className="px-5 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/25">Confirm Cancel</button>
+              </div>
+            </Modal>
+          )}
+
+          {/* Footer */}
+          <footer className="bg-slate-900 text-slate-400 text-sm mt-20">
+            <div className="max-w-7xl mx-auto px-4 py-16 grid grid-cols-1 md:grid-cols-3 gap-10 border-b border-slate-800">
+              {/* Left */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 select-none mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm">+</div>
+                  <span className="text-2xl font-black tracking-tight text-white">MEDI<span className="text-blue-500">CARE+</span></span>
+                </div>
+                <p className="text-slate-500 leading-relaxed max-w-sm">
+                  Your trusted healthcare companion. Making doctor appointments and clinical care accessible, simple, and reliable for everyone.
+                </p>
+              </div>
+
+              {/* Middle - Features */}
+              <div>
+                <h4 className="text-white font-bold mb-6 text-base tracking-wide">Quick Features</h4>
+                <div className="flex flex-col gap-3 font-semibold">
+                  <button onClick={() => setPage('doctors')} className="text-left hover:text-blue-400 transition-colors flex items-center gap-2">
+                    <i data-lucide="chevron-right" className="w-4 h-4 text-blue-600"></i> Find Specialists
+                  </button>
+                  <button onClick={() => setPage('hospitals')} className="text-left hover:text-blue-400 transition-colors flex items-center gap-2">
+                    <i data-lucide="chevron-right" className="w-4 h-4 text-blue-600"></i> Partner Hospitals
+                  </button>
+                  <button onClick={() => setPage('appointments')} className="text-left hover:text-blue-400 transition-colors flex items-center gap-2">
+                    <i data-lucide="chevron-right" className="w-4 h-4 text-blue-600"></i> My Appointments
+                  </button>
+                  <button onClick={() => { setAuthTab('register'); setAuthOpen(true); }} className="text-left hover:text-blue-400 transition-colors flex items-center gap-2">
+                    <i data-lucide="chevron-right" className="w-4 h-4 text-blue-600"></i> Register as Doctor
+                  </button>
+                </div>
+              </div>
+
+              {/* Right - Social */}
+              <div>
+                <h4 className="text-white font-bold mb-6 text-base tracking-wide">Connect With Us</h4>
+                <p className="text-slate-500 mb-6">Follow us on social media for health tips and clinic updates.</p>
+                <div className="flex gap-4">
+                  {/* Facebook */}
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 text-white transition-colors cursor-default">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                    </svg>
+                  </div>
+                  {/* Twitter / X */}
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-sky-500 text-white transition-colors cursor-default">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                  </div>
+                  {/* Instagram */}
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-pink-600 text-white transition-colors cursor-default">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" strokeWidth="2"/>
+                      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2"/>
+                      <circle cx="17.5" cy="6.5" r="1.5"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Copyright */}
+            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between text-xs font-medium text-slate-600">
+              <p>&copy; {new Date().getFullYear()} Medicare+ Healthcare.</p>
+              <div className="flex gap-4 mt-2 sm:mt-0">
+                <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
+                <span className="hover:text-slate-400 cursor-pointer">Terms of Service</span>
+              </div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    /* ─── SMALL REUSABLE COMPONENTS ─── */
+
+    function DirectoryPagination({ page, count, onChange }) {
+      const pages = Math.max(1, Math.ceil(count / 24));
+      return <div className="flex items-center justify-center gap-4 mt-6 text-xs font-bold">
+        <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} className="px-4 py-2 border border-slate-200 rounded-xl disabled:opacity-40">Previous</button>
+        <span>Page {page} of {pages}</span>
+        <button type="button" disabled={page >= pages} onClick={() => onChange(page + 1)} className="px-4 py-2 border border-slate-200 rounded-xl disabled:opacity-40">Next</button>
+      </div>;
+    }
+
+    function DoctorCard({ doc, onBook, onBio }) {
+      return (
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-300 transition-all flex flex-col">
+          <div className="relative h-72 bg-slate-100">
+            <img loading="lazy" src={doc.image} alt={doc.name} className="w-full h-full object-contain object-center" />
+            <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-extrabold text-blue-700 shadow-sm">{formatINR(doc.consultationFee)}</span>
+          </div>
+          <div className="p-5 flex flex-col flex-1 justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full">{doc.specialization}</span>
+              <h3 className="text-sm font-bold text-slate-900 mt-2">{doc.name}</h3>
+              <p className="text-xs text-slate-500">{doc.qualifications}</p>
+              <p className="text-xs text-slate-600 font-semibold mt-1.5 flex items-center gap-1">
+                <i data-lucide="building" className="w-3.5 h-3.5 text-slate-400"></i> {doc.hospital}
+              </p>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={onBio} className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50">
+                <i data-lucide="eye" className="w-4 h-4"></i>
+              </button>
+              <button disabled={!doc.verified || !doc.availableSlots?.length} onClick={onBook} className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 disabled:opacity-60">{!doc.verified ? (doc.verificationStatus === "Rejected" ? "Registration rejected" : "Booking unavailable") : !doc.availableSlots?.length ? "No available slots" : "Book Appointment"}</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function StatusBadge({ s }) {
+      const map = { Confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200', Pending: 'bg-amber-50 text-amber-700 border-amber-200', Completed: 'bg-blue-50 text-blue-700 border-blue-200', Cancelled: 'bg-rose-50 text-rose-700 border-rose-200' };
+      return <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${map[s]||map.Pending}`}>{s}</span>;
+    }
+
+    function Modal({ children, onClose, maxW = 'max-w-lg' }) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className={`bg-white rounded-3xl w-full ${maxW} p-7 shadow-2xl border border-slate-200 relative my-6`}>
+            <button onClick={onClose} className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center">
+              <i data-lucide="x" className="w-4 h-4"></i>
+            </button>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function AuthField({ label, name, type='text', icon, placeholder='', defaultValue='', blue=false }) {
+      const bg = blue ? 'bg-white' : 'bg-slate-50';
+      return (
+        <div>
+          <label className={`text-[11px] font-bold block mb-1 ${blue ? 'text-blue-700' : 'text-slate-700'}`}>{label}</label>
+          <div className="relative">
+            <input type={type} name={name} placeholder={placeholder} defaultValue={defaultValue}
+              className={`w-full text-xs p-2.5 ${bg} border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 ${icon ? 'pl-9' : ''}`} />
+            {icon && <i data-lucide={icon} className="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+  <script src="./frontend/public/medical-assistant.js"></script>
+</body>
+</html>
